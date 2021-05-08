@@ -249,9 +249,7 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
-  use test::Bencher;
 
   #[test]
   fn from_fn() {
@@ -339,6 +337,4 @@ mod test {
 
     assert_eq!(value, 6);
   }
-  #[bench]
-  fn bench_of(b: &mut Bencher) { b.iter(of); }
 }

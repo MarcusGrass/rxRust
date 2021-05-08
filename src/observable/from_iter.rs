@@ -113,9 +113,7 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
-  use test::Bencher;
   #[test]
   fn from_range() {
     let mut hit_count = 0;
@@ -167,6 +165,4 @@ mod test {
     assert_eq!(0, hit_count);
     assert!(completed);
   }
-  #[bench]
-  fn bench_from_iter(b: &mut Bencher) { b.iter(from_range); }
 }

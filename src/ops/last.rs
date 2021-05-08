@@ -78,9 +78,7 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
-  use test::Bencher;
 
   #[test]
   fn last_or_hundered_items() {
@@ -195,6 +193,4 @@ mod test {
       .into_shared()
       .subscribe(|_| {});
   }
-  #[bench]
-  fn bench_last(b: &mut Bencher) { b.iter(last_or_hundered_items); }
 }

@@ -218,11 +218,9 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
   use ops::box_it::{BoxClone, SharedBoxClone};
   use ops::box_it::{LocalBoxOp, SharedBoxOp};
-  use test::Bencher;
 
   #[test]
   fn box_observable() {
@@ -261,6 +259,4 @@ mod test {
       .subscribe(|_| {});
   }
 
-  #[bench]
-  fn bench_box_clone(b: &mut Bencher) { b.iter(box_clone); }
 }

@@ -78,9 +78,7 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
-  use test::Bencher;
 
   #[test]
   fn fork_and_shared() {
@@ -102,6 +100,4 @@ mod test {
       });
   }
 
-  #[bench]
-  fn bench_filter(b: &mut Bencher) { b.iter(smoke); }
 }

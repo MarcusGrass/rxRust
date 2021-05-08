@@ -78,9 +78,7 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
-  use test::Bencher;
 
   #[test]
   fn base_function() {
@@ -119,6 +117,4 @@ mod test {
       .into_shared()
       .subscribe(|_| {});
   }
-  #[bench]
-  fn bench_take_last(b: &mut Bencher) { b.iter(base_function); }
 }

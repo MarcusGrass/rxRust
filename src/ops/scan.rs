@@ -103,9 +103,7 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
-  use test::Bencher;
 
   #[test]
   fn scan_initial() {
@@ -171,6 +169,4 @@ mod test {
       .into_shared()
       .subscribe(|_| {});
   }
-  #[bench]
-  fn bench_scan(b: &mut Bencher) { b.iter(scan_initial); }
 }

@@ -330,13 +330,11 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
   use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
   };
-  use test::Bencher;
 
   #[test]
   fn odd_even_flatten() {
@@ -468,7 +466,4 @@ mod test {
     source.next(local1);
     source.next(local2);
   }
-
-  #[bench]
-  fn bench_flatten(b: &mut Bencher) { b.iter(odd_even_flatten); }
 }

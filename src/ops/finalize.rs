@@ -134,7 +134,6 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
   use std::cell::Cell;
   use std::rc::Rc;
@@ -142,7 +141,6 @@ mod test {
     atomic::{AtomicBool, Ordering},
     Arc,
   };
-  use test::Bencher;
 
   #[test]
   fn finalize_on_complete_simple() {
@@ -265,6 +263,4 @@ mod test {
     // Then
     assert!(finalized.load(Ordering::Relaxed));
   }
-  #[bench]
-  fn bench_finalize(b: &mut Bencher) { b.iter(finalize_on_complete_simple); }
 }

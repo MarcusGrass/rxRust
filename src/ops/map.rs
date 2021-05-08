@@ -78,9 +78,7 @@ where
 
 #[cfg(test)]
 mod test {
-  extern crate test;
   use crate::prelude::*;
-  use test::Bencher;
 
   #[test]
   fn primitive_type() {
@@ -122,6 +120,4 @@ mod test {
       .subscribe(|v| i += v);
     assert_eq!(i, 3);
   }
-  #[bench]
-  fn bench(b: &mut Bencher) { b.iter(primitive_type); }
 }
