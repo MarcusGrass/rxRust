@@ -3,6 +3,10 @@ use crate::prelude::*;
 /// Implements the Observer trait and Subscription trait. While the Observer is
 /// the public API for consuming the values of an Observable, all Observers get
 /// converted to a Subscriber, in order to provide Subscription capabilities.
+pub trait Subscription {
+  fn request(&self, requested_items: usize);
+}
+
 #[derive(Clone)]
 pub struct Subscriber<O, U> {
   pub(crate) observer: O,
@@ -57,10 +61,14 @@ where
 }
 
 impl<O, U: SubscriptionLike> SubscriptionLike for Subscriber<O, U> {
-  #[inline]
-  fn is_closed(&self) -> bool { self.subscription.is_closed() }
+  fn request(&self, requested: u128) {
+  }
+
   #[inline]
   fn unsubscribe(&mut self) { self.subscription.unsubscribe() }
+
+  #[inline]
+  fn is_closed(&self) -> bool { self.subscription.is_closed() }
 }
 
 #[cfg(test)]

@@ -91,6 +91,10 @@ impl SpawnHandle {
 }
 
 impl SubscriptionLike for SpawnHandle {
+  fn request(&self, requested: u128) {
+    todo!()
+  }
+
   fn unsubscribe(&mut self) {
     let was_closed = *self.is_closed.read().unwrap();
     if !was_closed {

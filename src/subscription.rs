@@ -7,10 +7,13 @@ use std::{
   rc::Rc,
   sync::{Arc, Mutex},
 };
+use crate::subscriber::Subscription;
 
 /// Subscription returns from `Observable.subscribe(Subscriber)` to allow
 ///  unsubscribing.
 pub trait SubscriptionLike {
+  fn request(&self, requested: u128);
+
   /// This allows deregistering an stream before it has finished receiving all
   /// events (i.e. before onCompleted is called).
   fn unsubscribe(&mut self);
@@ -55,9 +58,15 @@ pub trait TearDownSize: SubscriptionLike {
 
 impl SubscriptionLike for LocalSubscription {
   #[inline]
+  fn request(&self, requested: u128) {
+    self.0.request(requested)
+  }
+
+  #[inline]
   fn unsubscribe(&mut self) { self.0.unsubscribe() }
   #[inline]
   fn is_closed(&self) -> bool { self.0.is_closed() }
+
 }
 
 #[derive(Clone, Debug, Default)]
@@ -90,6 +99,11 @@ impl TearDownSize for SharedSubscription {
 
 impl SubscriptionLike for SharedSubscription {
   #[inline]
+  fn request(&self, requested: u128) {
+    self.0.request(requested);
+  }
+
+  #[inline]
   fn unsubscribe(&mut self) { self.0.unsubscribe(); }
   #[inline]
   fn is_closed(&self) -> bool { self.0.is_closed() }
@@ -117,8 +131,11 @@ impl<T> Debug for Inner<T> {
 }
 
 impl<T: SubscriptionLike> SubscriptionLike for Inner<T> {
-  #[inline(always)]
-  fn is_closed(&self) -> bool { self.closed }
+  fn request(&self, requested: u128) {
+      for v in &self.teardown {
+        v.request(requested);
+      }
+  }
 
   fn unsubscribe(&mut self) {
     if !self.closed {
@@ -128,6 +145,9 @@ impl<T: SubscriptionLike> SubscriptionLike for Inner<T> {
       }
     }
   }
+
+  #[inline(always)]
+  fn is_closed(&self) -> bool { self.closed }
 }
 
 impl<T: SubscriptionLike> Inner<T> {
@@ -154,6 +174,10 @@ impl<T> SubscriptionLike for Arc<Mutex<T>>
 where
   T: SubscriptionLike,
 {
+  fn request(&self, requested: u128) {
+    self.lock().unwrap().request(requested);
+  }
+
   #[inline]
   fn unsubscribe(&mut self) { self.lock().unwrap().unsubscribe() }
 
@@ -165,6 +189,10 @@ impl<T> SubscriptionLike for Rc<RefCell<T>>
 where
   T: SubscriptionLike,
 {
+  fn request(&self, requested: u128) {
+    self.borrow().request(requested);
+  }
+
   #[inline]
   fn unsubscribe(&mut self) { self.borrow_mut().unsubscribe() }
 
@@ -176,6 +204,11 @@ impl<T: ?Sized> SubscriptionLike for Box<T>
 where
   T: SubscriptionLike,
 {
+  fn request(&self, requested: u128) {
+    let s = &**self;
+    s.request(requested);
+  }
+
   #[inline]
   fn unsubscribe(&mut self) {
     let s = &mut **self;
@@ -210,10 +243,14 @@ impl<T: SubscriptionLike> SubscriptionWrapper<T> {
 }
 
 impl<T: SubscriptionLike> SubscriptionLike for SubscriptionWrapper<T> {
-  #[inline]
-  fn is_closed(&self) -> bool { self.0.is_closed() }
+  fn request(&self, requested: u128) {
+    self.0.request(requested);
+  }
   #[inline]
   fn unsubscribe(&mut self) { self.0.unsubscribe() }
+
+  #[inline]
+  fn is_closed(&self) -> bool { self.0.is_closed() }
 }
 
 /// An RAII implementation of a "scoped subscribed" of a subscription.

@@ -188,6 +188,10 @@ where
   S: TearDownSize,
   C: SubscriptionLike,
 {
+  fn request(&self, requested: u128) {
+    todo!()
+  }
+
   fn unsubscribe(&mut self) {
     self.subscription.unsubscribe();
     if self.subscription.teardown_size() == 0 {

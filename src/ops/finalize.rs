@@ -92,6 +92,10 @@ impl<Target> SubscriptionLike
 where
   Target: FnMut(),
 {
+  fn request(&self, requested: u128) {
+    todo!()
+  }
+
   fn unsubscribe(&mut self) {
     self.is_closed = true;
     if let Some(mut func) = (self.func.lock().unwrap()).take() {
@@ -108,6 +112,10 @@ impl<Target> SubscriptionLike
 where
   Target: FnMut(),
 {
+  fn request(&self, requested: u128) {
+    todo!()
+  }
+
   fn unsubscribe(&mut self) {
     self.is_closed = true;
     if let Some(mut func) = (self.func.borrow_mut()).take() {
@@ -123,6 +131,10 @@ impl<Target> SubscriptionLike for FinalizerSubscription<Box<Option<Target>>>
 where
   Target: FnMut(),
 {
+  fn request(&self, requested: u128) {
+    todo!()
+  }
+
   fn unsubscribe(&mut self) {
     self.is_closed = true;
     if let Some(mut func) = (self.func).take() {
