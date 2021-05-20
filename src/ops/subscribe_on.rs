@@ -42,12 +42,12 @@ where
   S: LocalObservable<'static> + 'static,
   SD: LocalScheduler,
 {
-  type Unsub = LocalSubscription;
+  type Unsub = LocalSubscription<'static>;
   fn actual_subscribe<
     O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
   >(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {
     let source = self.source;
     let subscription = subscriber.subscription.clone();

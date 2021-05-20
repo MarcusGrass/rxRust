@@ -33,7 +33,7 @@ where
     >,
   ),
 {
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription>)
+  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>)
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
   {

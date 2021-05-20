@@ -43,7 +43,7 @@ where
   S: LocalObservable<'a>,
   F: FnMut(&S::Item) -> bool + 'a,
 {
-  observable_impl!(LocalSubscription, S, 'a);
+  observable_impl!(LocalSubscription<'a>, S, 'a);
 }
 
 impl<S, F> SharedObservable for TakeWhileOp<S, F>

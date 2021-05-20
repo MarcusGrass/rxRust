@@ -28,7 +28,7 @@ where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
   >(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {
     let Self {
       source,

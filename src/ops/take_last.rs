@@ -36,7 +36,7 @@ where
   S: LocalObservable<'a> + 'a,
 {
   type Unsub = S::Unsub;
-  observable_impl!(LocalSubscription, 'a);
+  observable_impl!(LocalSubscription<'a>, 'a);
 }
 
 impl<S> SharedObservable for TakeLastOp<S>

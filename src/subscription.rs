@@ -30,25 +30,16 @@ impl Debug for Box<dyn SubscriptionLike> {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct LocalSubscription(Rc<RefCell<Inner<Box<dyn SubscriptionLike>>>>);
+pub struct LocalSubscription<'a>(Rc<RefCell<Inner<Box<dyn SubscriptionLike + 'a>>>>);
 
-impl LocalSubscription {
-  pub fn add<S: SubscriptionLike + 'static>(&self, subscription: S) {
-    if !self.is_same(&subscription) {
-      self.0.borrow_mut().add(Box::new(subscription))
-    }
+impl<'a> LocalSubscription<'a> {
+  pub fn add<S: SubscriptionLike + 'a>(&self, subscription: S) {
+    self.0.borrow_mut().add(Box::new(subscription))
   }
 
-  fn is_same(&self, other: &dyn Any) -> bool {
-    if let Some(other) = other.downcast_ref::<Self>() {
-      Rc::ptr_eq(&self.0, &other.0)
-    } else {
-      false
-    }
-  }
 }
 
-impl TearDownSize for LocalSubscription {
+impl<'a> TearDownSize for LocalSubscription<'a> {
   fn teardown_size(&self) -> usize { self.0.borrow().teardown.len() }
 }
 
@@ -56,7 +47,7 @@ pub trait TearDownSize: SubscriptionLike {
   fn teardown_size(&self) -> usize;
 }
 
-impl SubscriptionLike for LocalSubscription {
+impl<'a> SubscriptionLike for LocalSubscription<'a> {
   #[inline]
   fn request(&self, requested: u128) {
     self.0.request(requested)

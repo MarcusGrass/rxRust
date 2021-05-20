@@ -44,7 +44,7 @@ impl<'a, S, Item, Err> LocalObservable<'a>
 where
   S: LocalObservable<'a, Item = Item, Err = Err>,
 {
-  observable_impl!(LocalSubscription, 'a);
+  observable_impl!(LocalSubscription<'a>, 'a);
 }
 
 impl<S, Item, Err> SharedObservable

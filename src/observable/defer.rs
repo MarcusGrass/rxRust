@@ -39,7 +39,7 @@ where
   F: FnOnce() -> Emit,
   Emit: LocalObservable<'a> + observable::Observable<Item = Item, Err = Err>,
 {
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription>)
+  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>)
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
   {

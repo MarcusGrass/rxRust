@@ -26,11 +26,11 @@ where
   S1: LocalObservable<'a>,
   S2: LocalObservable<'a, Item = S1::Item, Err = S1::Err>,
 {
-  type Unsub = LocalSubscription;
+  type Unsub = LocalSubscription<'a>;
 
   fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub {
     let subscription = subscriber.subscription;
     let merge_observer = Rc::new(RefCell::new(MergeObserver {

@@ -42,7 +42,7 @@ where
   Item: 'a + Clone + Eq,
 {
   type Unsub = S::Unsub;
-  observable_impl!(LocalSubscription,'a);
+  observable_impl!(LocalSubscription<'a>,'a);
 }
 
 impl<Item, S> SharedObservable for ContainsOp<S, Item>

@@ -13,7 +13,7 @@ pub struct Subscriber<O, U> {
   pub(crate) subscription: U,
 }
 
-impl<O> Subscriber<O, LocalSubscription> {
+impl<'a, O> Subscriber<O, LocalSubscription<'a>> {
   pub fn local(observer: O) -> Self {
     Subscriber {
       observer,

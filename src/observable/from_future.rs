@@ -73,7 +73,7 @@ where
   F: Future<Output = Item> + 'static,
   S: LocalScheduler,
 {
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription>)
+  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'static>>)
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
   {
@@ -153,7 +153,7 @@ where
   <F as Future>::Output: Into<Result<Item, Err>>,
   S: LocalScheduler,
 {
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription>)
+  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'static>>)
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
   {

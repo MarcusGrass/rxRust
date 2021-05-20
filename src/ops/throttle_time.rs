@@ -36,7 +36,7 @@ where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
   >(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {
     let Self {
       source,
@@ -116,8 +116,8 @@ struct SharedThrottleObserver<O, S, Item>(
   Arc<Mutex<ThrottleObserver<O, S, Item, SharedSubscription>>>,
 );
 
-struct LocalThrottleObserver<O, S, Item>(
-  Rc<RefCell<ThrottleObserver<O, S, Item, LocalSubscription>>>,
+struct LocalThrottleObserver<'a, O, S, Item>(
+  Rc<RefCell<ThrottleObserver<O, S, Item, LocalSubscription<'a>>>>,
 );
 
 impl<O, S> Observer for SharedThrottleObserver<O, S, O::Item>
@@ -177,7 +177,7 @@ where
   }
 }
 
-impl<O, S> Observer for LocalThrottleObserver<O, S, O::Item>
+impl<O, S> Observer for LocalThrottleObserver<'static, O, S, O::Item>
 where
   O: Observer + 'static,
   S: LocalScheduler + 'static,

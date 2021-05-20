@@ -34,7 +34,7 @@ where
   Item: 'a + Eq + Hash + Clone,
 {
   type Unsub = S::Unsub;
-  distinct_impl!(LocalSubscription,'a);
+  distinct_impl!(LocalSubscription<'a>,'a);
 }
 
 impl<S, Item> SharedObservable for DistinctOp<S>

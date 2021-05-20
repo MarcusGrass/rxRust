@@ -336,23 +336,23 @@ where
 ////////////////////////////////////////////////////////////////////////////////
 // local
 
-type LocalInnerObserver<O> =
-  FlattenInnerObserver<O, LocalSubscription, Rc<RefCell<FlattenState>>>;
+type LocalInnerObserver<'a, O> =
+  FlattenInnerObserver<O, LocalSubscription<'a>, Rc<RefCell<FlattenState>>>;
 
 #[derive(Clone)]
 /// This is an `Observer` for `Observable` values that get emitted by an
 /// `Observable` that works on a local environment.
-pub struct FlattenLocalOuterObserver<Inner, O> {
+pub struct FlattenLocalOuterObserver<'a,Inner, O> {
   marker: std::marker::PhantomData<Inner>,
-  inner_observer: Rc<RefCell<LocalInnerObserver<O>>>,
-  subscription: LocalSubscription,
+  inner_observer: Rc<RefCell<LocalInnerObserver<'a, O>>>,
+  subscription: LocalSubscription<'a>,
   state: Rc<RefCell<FlattenState>>,
 }
 
-impl<'a, Inner, O, Item, Err> Observer for FlattenLocalOuterObserver<Inner, O>
+impl<'a, Inner, O, Item, Err> Observer for FlattenLocalOuterObserver<'a, Inner, O>
 where
   O: Observer<Item = Item, Err = Err> + 'a,
-  Inner: LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription>,
+  Inner: LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription<'a>>,
 {
   type Item = Inner;
   type Err = Err;
@@ -379,13 +379,13 @@ impl<'a, Outer, Inner, Item, Err> LocalObservable<'a>
 where
   Outer: LocalObservable<'a, Item = Inner, Err = Err>,
   Inner:
-    LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription> + 'a,
+    LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription<'a>> + 'a,
 {
-  type Unsub = LocalSubscription;
+  type Unsub = LocalSubscription<'a>;
 
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'a,

@@ -2,20 +2,20 @@ use crate::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-type RcPublishers<P> = Rc<RefCell<Vec<Box<P>>>>;
-type _LocalSubject<P> = Subject<RcPublishers<P>, LocalSubscription>;
+type RcPublishers<'a, P> = Rc<RefCell<Vec<Box<P>>>>;
+type _LocalSubject<'a, P> = Subject<RcPublishers<'a, P>, LocalSubscription<'a>>;
 
 pub type LocalSubject<'a, Item, Err> =
-  _LocalSubject<dyn Publisher<Item = Item, Err = Err> + 'a>;
+  _LocalSubject<'a, dyn Publisher<Item = Item, Err = Err> + 'a>;
 
 pub type LocalSubjectRef<'a, Item, Err> =
-  _LocalSubject<dyn Publisher<Item = &'a Item, Err = Err> + 'a>;
+  _LocalSubject<'a, dyn Publisher<Item = &'a Item, Err = Err> + 'a>;
 
 pub type LocalSubjectErrRef<'a, Item, Err> =
-  _LocalSubject<dyn Publisher<Item = Item, Err = &'a Err> + 'a>;
+  _LocalSubject<'a, dyn Publisher<Item = Item, Err = &'a Err> + 'a>;
 
 pub type LocalSubjectRefAll<'a, Item, Err> =
-  _LocalSubject<dyn Publisher<Item = &'a Item, Err = &'a Err> + 'a>;
+  _LocalSubject<'a, dyn Publisher<Item = &'a Item, Err = &'a Err> + 'a>;
 
 impl<'a, Item, Err> LocalSubject<'a, Item, Err> {
   #[inline]
@@ -37,10 +37,10 @@ impl<'a, Item, Err> Observable for LocalSubject<'a, Item, Err> {
 }
 
 impl<'a, Item, Err> LocalObservable<'a> for LocalSubject<'a, Item, Err> {
-  type Unsub = LocalSubscription;
+  type Unsub = LocalSubscription<'a>;
   fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> LocalSubscription {
     let subscription = subscriber.subscription.clone();
     self.subscription.add(subscription.clone());

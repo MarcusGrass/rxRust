@@ -26,7 +26,7 @@ where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
   >(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {
     let Subscriber {
       observer,
@@ -75,10 +75,10 @@ where
   }
 }
 
-struct LocalObserver<O, SD: LocalScheduler> {
+struct LocalObserver<'a, O, SD: LocalScheduler> {
   observer: Rc<RefCell<O>>,
   scheduler: SD,
-  subscription: LocalSubscription,
+  subscription: LocalSubscription<'a>,
 }
 
 struct SharedObserver<O, SD: SharedScheduler> {
@@ -137,7 +137,7 @@ where
   fn is_stopped(&self) -> bool { self.observer.lock().unwrap().is_stopped() }
 }
 
-impl<O: 'static, SD: LocalScheduler + 'static> LocalObserver<O, SD> {
+impl<O: 'static, SD: LocalScheduler + 'static> LocalObserver<'static, O, SD> {
   fn observer_schedule<S, Task>(&mut self, task: Task, state: S)
   where
     S: 'static,
@@ -152,7 +152,7 @@ impl<O: 'static, SD: LocalScheduler + 'static> LocalObserver<O, SD> {
     self.subscription.add(subscription);
   }
 }
-impl<Item, Err, O, SD> Observer for LocalObserver<O, SD>
+impl<Item, Err, O, SD> Observer for LocalObserver<'static, O, SD>
 where
   Item: Clone + 'static,
   Err: Clone + 'static,

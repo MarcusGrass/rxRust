@@ -6,7 +6,7 @@ pub trait Emitter {
 }
 
 pub trait LocalEmitter<'a>: Emitter {
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription>)
+  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>)
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'a;
 }
@@ -45,8 +45,8 @@ impl<'a, Emit> LocalObservable<'a> for ObservableBase<Emit>
 where
   Emit: LocalEmitter<'a>,
 {
-  type Unsub = LocalSubscription;
-  observable_impl!(LocalSubscription, 'a);
+  type Unsub = LocalSubscription<'a>;
+  observable_impl!(LocalSubscription<'a>, 'a);
 }
 
 impl<Emit> SharedObservable for ObservableBase<Emit>

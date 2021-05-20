@@ -29,7 +29,7 @@ where
 
   fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub {
     let subscription = subscriber.subscription.clone();
     let func = Rc::new(RefCell::new(Some(self.func)));

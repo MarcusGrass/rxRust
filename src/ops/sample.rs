@@ -61,10 +61,10 @@ where
   Source: LocalObservable<'a> + 'a,
   Sampling: LocalObservable<'a, Err = Source::Err> + 'a,
 {
-  type Unsub = LocalSubscription;
+  type Unsub = LocalSubscription<'a>;
   fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub {
     let subscription = subscriber.subscription;
     let source_observer = Rc::new(RefCell::new(SampleObserver {

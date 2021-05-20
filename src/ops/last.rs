@@ -41,7 +41,7 @@ where
   Item: 'a + Clone,
 {
   type Unsub = S::Unsub;
-  observable_impl!(LocalSubscription, 'a);
+  observable_impl!(LocalSubscription<'a>, 'a);
 }
 
 impl<Item, S> SharedObservable for LastOp<S, Item>

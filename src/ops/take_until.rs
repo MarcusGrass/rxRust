@@ -49,8 +49,8 @@ where
   S: LocalObservable<'a> + 'a,
   N: LocalObservable<'a, Err = S::Err> + 'a,
 {
-  type Unsub = LocalSubscription;
-  observable_impl!(LocalSubscription, Rc::new, RefCell::new, 'a);
+  type Unsub = LocalSubscription<'a>;
+  observable_impl!(LocalSubscription<'a>, Rc::new, RefCell::new, 'a);
 }
 
 impl<S, N> SharedObservable for TakeUntilOp<S, N>

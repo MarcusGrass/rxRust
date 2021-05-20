@@ -124,10 +124,10 @@ where
   Item: Clone + 'a,
   Err: Clone + 'a,
 {
-  type Unsub = RefCountSubscription<LocalSubscription, S::Unsub>;
+  type Unsub = RefCountSubscription<LocalSubscription<'a>, S::Unsub>;
   fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub {
     let mut inner = (self.0).0.borrow_mut();
     inner.connectable.clone().actual_subscribe(subscriber);

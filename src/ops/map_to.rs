@@ -43,7 +43,7 @@ where
   S::Item: 'a,
 {
   type Unsub = S::Unsub;
-  observable_impl!(LocalSubscription,'a);
+  observable_impl!(LocalSubscription<'a>,'a);
 }
 
 impl<B, S> SharedObservable for MapToOp<S, B>

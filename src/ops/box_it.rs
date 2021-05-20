@@ -7,9 +7,9 @@ pub trait BoxObservable<'a> {
     self: Box<Self>,
     subscriber: Subscriber<
       Box<dyn Observer<Item = Self::Item, Err = Self::Err> + 'a>,
-      LocalSubscription,
+      LocalSubscription<'a>,
     >,
-  ) -> Box<dyn SubscriptionLike>;
+  ) -> Box<dyn SubscriptionLike + 'a>;
 }
 
 pub trait SharedBoxObservable {
@@ -45,7 +45,14 @@ impl<'a, T> BoxObservable<'a> for T
 where
   T: LocalObservable<'a> + 'a,
 {
-  box_observable_impl!(LocalSubscription, T, 'a);
+  type Item = T::Item;
+  type Err = T::Err;
+  fn box_subscribe(
+    self: Box<Self>,
+    subscriber: Subscriber<Box<dyn Observer<Item=Self::Item,Err=Self::Err> + 'a>, LocalSubscription<'a>, >,
+  ) -> Box<dyn SubscriptionLike + 'a>  {
+    Box::new(self.actual_subscribe(subscriber))
+  }
 }
 
 impl<T> SharedBoxObservable for T
@@ -95,8 +102,8 @@ impl<'a, Item, Err> Observable for LocalBoxOp<'a, Item, Err> {
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalBoxOp<'a, Item, Err> {
-  type Unsub = Box<dyn SubscriptionLike>;
-  observable_impl!(LocalSubscription, 'a);
+  type Unsub = Box<dyn SubscriptionLike + 'a>;
+  observable_impl!(LocalSubscription<'a>, 'a);
 }
 
 impl<Item, Err> Observable for SharedBoxOp<Item, Err> {
@@ -114,8 +121,8 @@ impl<'a, Item, Err> Observable for LocalCloneBoxOp<'a, Item, Err> {
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalCloneBoxOp<'a, Item, Err> {
-  type Unsub = Box<dyn SubscriptionLike>;
-  observable_impl!(LocalSubscription, 'a);
+  type Unsub = Box<dyn SubscriptionLike + 'a>;
+  observable_impl!(LocalSubscription<'a>, 'a);
 }
 
 impl<Item, Err> Observable for SharedCloneBoxOp<Item, Err> {

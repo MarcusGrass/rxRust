@@ -62,7 +62,7 @@ where
   Source::Item: 'a,
 {
   type Unsub = Source::Unsub;
-  observable_impl!(LocalSubscription, 'a);
+  observable_impl!(LocalSubscription<'a>, 'a);
 }
 
 impl<OutputItem, Source, BinaryOp> SharedObservable

@@ -31,10 +31,10 @@ where
   A::Item: 'a,
   B::Item: 'a,
 {
-  type Unsub = LocalSubscription;
+  type Unsub = LocalSubscription<'a>;
   fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub {
     let sub = subscriber.subscription;
     let o_zip = ZipObserver::new(subscriber.observer, sub.clone());
