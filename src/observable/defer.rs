@@ -18,48 +18,83 @@ use crate::prelude::*;
 /// ```
 pub fn defer<F, Item, Err, Emit>(
   observable_supplier: F,
-) -> ObservableBase<DeferEmitter<F, Item, Err>>
+) -> ObservableBase<DeferPublisherFactory<F, Emit, Item, Err>>
 where
   F: FnOnce() -> ObservableBase<Emit>,
-  Emit: Emitter,
+  Emit: PublisherFactory,
 {
-  ObservableBase::new(DeferEmitter(observable_supplier, TypeHint::new()))
+  ObservableBase::new(DeferPublisherFactory(observable_supplier, TypeHint::new()))
 }
 
 #[derive(Clone)]
-pub struct DeferEmitter<F, Item, Err>(F, TypeHint<(Item, Err)>);
+struct DeferPublisherFactory<F, Emit, Item, Err>(F, TypeHint<(Item, Err, Emit)>);
 
-impl<F, Item, Err> Emitter for DeferEmitter<F, Item, Err> {
+impl<F, Emit, Item, Err> PublisherFactory for DeferPublisherFactory<F, Emit, Item, Err> {
   type Item = Item;
   type Err = Err;
 }
 
-impl<'a, F, Emit, Item, Err> LocalEmitter<'a> for DeferEmitter<F, Item, Err>
-where
-  F: FnOnce() -> Emit,
-  Emit: LocalObservable<'a> + observable::Observable<Item = Item, Err = Err>,
-{
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>)
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
-  {
-    (self.0)().actual_subscribe(subscriber);
+impl<'a, F, Emit, Item, Err> LocalPublisherFactory<'a> for DeferPublisherFactory<F, Emit, Item, Err> {
+  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+    todo!()
   }
 }
 
-impl<F, Item: 'static, Emit, Err: 'static> SharedEmitter
-  for DeferEmitter<F, Item, Err>
-where
-  F: FnOnce() -> Emit,
-  Emit: SharedObservable + observable::Observable<Item = Item, Err = Err>,
+#[derive(Clone)]
+struct LocalDeferPublisher<'a, F, O, Emit> {
+  func: F,
+  sub: Subscriber<O, LocalSubscription<'a>>,
+  _h: TypeHint<Emit>
+
+}
+
+impl<'a, F, O, Emit> SubscriptionLike for LocalDeferPublisher<'a, F, O, Emit>
+where F: FnOnce() -> ObservableBase<Emit>
 {
-  fn emit<O>(self, subscriber: Subscriber<O, SharedSubscription>)
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  {
-    (self.0)().actual_subscribe(subscriber);
+  fn request(&mut self, _: u128) {
+    (self.func)();
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
   }
 }
+
+impl<F, Item, Err, Emit> SharedPublisherFactory for DeferPublisherFactory<F, Item, Err, Emit> {
+  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    todo!()
+  }
+}
+
+#[derive(Clone)]
+struct SharedDeferPublisher<F, O, Emit> {
+  func: F,
+  sub: Subscriber<O, SharedSubscription>,
+  _h: TypeHint<Emit>
+}
+
+impl<'a, F, O, Emit> SubscriptionLike for SharedDeferPublisher< F, O, Emit>
+  where F: FnOnce() -> ObservableBase<Emit>
+{
+  fn request(&mut self, _: u128) {
+    (self.func)();
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
 
 #[cfg(test)]
 mod test {

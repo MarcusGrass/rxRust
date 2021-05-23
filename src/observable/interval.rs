@@ -1,14 +1,15 @@
 use crate::prelude::*;
 
 use std::time::{Duration, Instant};
+use std::sync::{Arc, RwLock};
 
 /// Creates an observable which will fire at `dur` time into the future,
 /// and will repeat every `dur` interval after.
 pub fn interval<S>(
   dur: Duration,
   scheduler: S,
-) -> ObservableBase<IntervalEmitter<S>> {
-  ObservableBase::new(IntervalEmitter {
+) -> ObservableBase<IntervalPublisherFactory<S>> {
+  ObservableBase::new(IntervalPublisherFactory {
     dur,
     at: None,
     scheduler,
@@ -21,8 +22,8 @@ pub fn interval_at<S>(
   at: Instant,
   dur: Duration,
   scheduler: S,
-) -> ObservableBase<IntervalEmitter<S>> {
-  ObservableBase::new(IntervalEmitter {
+) -> ObservableBase<IntervalPublisherFactory<S>> {
+  ObservableBase::new(IntervalPublisherFactory {
     scheduler,
     dur,
     at: Some(at),
@@ -30,44 +31,110 @@ pub fn interval_at<S>(
 }
 
 #[derive(Clone)]
-pub struct IntervalEmitter<S> {
+struct IntervalPublisherFactory<S> {
   scheduler: S,
   dur: Duration,
   at: Option<Instant>,
 }
 
-impl<S> Emitter for IntervalEmitter<S> {
+impl<S> PublisherFactory for IntervalPublisherFactory<S> {
   type Item = usize;
   type Err = ();
 }
 
-impl<S: SharedScheduler + 'static> SharedEmitter for IntervalEmitter<S> {
-  fn emit<O>(self, subscriber: Subscriber<O, SharedSubscription>)
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+impl<S> LocalPublisherFactory<'static> for IntervalPublisherFactory<S>
+where S: LocalScheduler
+{
+  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'static>>) -> LocalSubscription<'static> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'static
   {
     let mut observer = subscriber.observer;
+    let requested = Arc::new(RwLock::new(0));
+    let r_c = requested.clone();
     let handle = self.scheduler.schedule_repeating(
-      move |i| observer.next(i),
+      move |i| {
+        if *r_c.read().unwrap() > 0 {
+          observer.next(i);
+        }
+      },
       self.dur,
       self.at,
     );
-    subscriber.subscription.add(handle);
+    LocalSubscription::new(LocalIntervalPublisherFactory{
+      dur: self.dur,
+      at: self.at,
+      requested,
+      abort: handle
+    })
   }
 }
 
-impl<S: LocalScheduler + 'static> LocalEmitter<'static> for IntervalEmitter<S> {
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription>)
-  where
-    O: Observer<Item = usize, Err = Self::Err> + 'static,
+impl<S> SharedPublisherFactory for IntervalPublisherFactory<S>
+where S: SharedScheduler
+{
+  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static
   {
     let mut observer = subscriber.observer;
+    let requested = Arc::new(RwLock::new(0));
+    let r_c = requested.clone();
     let handle = self.scheduler.schedule_repeating(
-      move |i| observer.next(i),
+      move |i| {
+        if *r_c.read().unwrap() > 0 { // TODO: This will by default onBackpressureDrop emissions if none are requested, could cache them instead
+          observer.next(i);
+        }
+      },
       self.dur,
       self.at,
     );
-    subscriber.subscription.add(handle);
+    SharedSubscription::new(SharedIntervalPublisherFactory{
+      dur: self.dur,
+      at: self.at,
+      requested,
+      abort: handle
+    })
+  }
+}
+
+struct LocalIntervalPublisherFactory {
+  dur: Duration,
+  at: Option<Instant>,
+  requested: Arc<RwLock<usize>>,
+  abort: SpawnHandle
+}
+
+struct SharedIntervalPublisherFactory {
+  dur: Duration,
+  at: Option<Instant>,
+  requested: Arc<RwLock<usize>>,
+  abort: SpawnHandle
+}
+
+impl SubscriptionLike for LocalIntervalPublisherFactory {
+  fn request(&mut self, requested: u128) {
+    *self.requested.write().unwrap() += requested as usize;
+  }
+
+  fn unsubscribe(&mut self) {
+    self.abort.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.abort.is_closed()
+  }
+}
+
+impl SubscriptionLike for SharedIntervalPublisherFactory {
+  fn request(&mut self, requested: u128) {
+    *self.requested.write().unwrap() += requested as usize;
+  }
+
+  fn unsubscribe(&mut self) {
+    self.abort.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.abort.is_closed()
   }
 }
 

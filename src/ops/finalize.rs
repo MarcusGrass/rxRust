@@ -92,7 +92,7 @@ impl<Target> SubscriptionLike
 where
   Target: FnMut(),
 {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     todo!()
   }
 
@@ -112,7 +112,7 @@ impl<Target> SubscriptionLike
 where
   Target: FnMut(),
 {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     todo!()
   }
 
@@ -131,7 +131,7 @@ impl<Target> SubscriptionLike for FinalizerSubscription<Box<Option<Target>>>
 where
   Target: FnMut(),
 {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     todo!()
   }
 

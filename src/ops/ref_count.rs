@@ -188,7 +188,7 @@ where
   S: TearDownSize,
   C: SubscriptionLike,
 {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     todo!()
   }
 

@@ -91,7 +91,7 @@ impl SpawnHandle {
 }
 
 impl SubscriptionLike for SpawnHandle {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     todo!()
   }
 

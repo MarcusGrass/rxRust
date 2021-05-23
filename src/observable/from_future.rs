@@ -1,6 +1,5 @@
 use crate::prelude::*;
-use futures::FutureExt;
-use observable::of;
+use futures::{FutureExt};
 use std::future::Future;
 
 /// Converts a `Future` to an observable sequence. Even though if the future
@@ -24,69 +23,119 @@ use std::future::Future;
 pub fn from_future<F, Item, S>(
   f: F,
   scheduler: S,
-) -> ObservableBase<FutureEmitter<F, S>>
+) -> ObservableBase<FuturePublisherFactory<F, S>>
 where
   F: Future<Output = Item>,
 {
-  ObservableBase::new(FutureEmitter {
+  ObservableBase::new(FuturePublisherFactory {
     future: f,
     scheduler,
   })
 }
 
+
 #[derive(Clone)]
-pub struct FutureEmitter<F, S> {
+pub struct FuturePublisherFactory<F, S> {
   future: F,
   scheduler: S,
 }
 
-impl<Item, F, S> Emitter for FutureEmitter<F, S>
-where
-  F: Future<Output = Item>,
+#[derive(Clone)]
+struct LocalFuturePublisher<F> {
+  future: F,
+  abort: SpawnHandle,
+}
+
+impl<F> SubscriptionLike for LocalFuturePublisher<F>
+  where
+      F: Future,
 {
-  type Item = Item;
+  fn request(&mut self, _: u128) {
+
+  }
+
+  fn unsubscribe(&mut self) {
+    self.abort.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.abort.is_closed() // TODO: Is this correct?
+  }
+}
+
+#[derive(Clone)]
+struct SharedFuturePublisher<F> {
+  future: F,
+  abort: SpawnHandle,
+}
+
+impl<F> SubscriptionLike for SharedFuturePublisher<F>
+  where
+      F: Future,
+{
+  fn request(&mut self, _: u128) {
+  }
+
+  fn unsubscribe(&mut self) {
+    self.abort.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.abort.is_closed() // TODO: Is this correct?
+  }
+}
+impl<F, S> PublisherFactory for FuturePublisherFactory<F, S>
+where F: Future
+{
+  type Item = F::Output;
   type Err = ();
 }
 
-impl<Item, F, S> SharedEmitter for FutureEmitter<F, S>
-where
-  F: Future<Output = Item> + Send + Sync + 'static,
-  S: SharedScheduler,
+impl<F, S> LocalPublisherFactory<'static> for FuturePublisherFactory<F, S>
+  where F: Future + 'static, S: LocalScheduler
 {
-  fn emit<O>(self, subscriber: Subscriber<O, SharedSubscription>)
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  {
-    let subscription = subscriber.subscription.clone();
-
-    let f = self
-      .future
-      .map(move |v| SharedEmitter::emit(of::OfEmitter(v), subscriber));
+  fn subscribe<O>(self, mut subscriber: Subscriber<O, LocalSubscription<'static>>) -> LocalSubscription<'static> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'static {
+    let f = self.future;
     let (future, handle) = futures::future::abortable(f);
-    self.scheduler.spawn(future.map(|_| ()));
-    subscription.add(SpawnHandle::new(handle))
+    self.scheduler.spawn(future.map(move |v| {
+      if let Ok(output) = v {
+        subscriber.observer.next(output);
+        subscriber.observer.complete();
+      }
+    }));
+    let subscription = LocalSubscription::default();
+    subscription.add(LocalFuturePublisher{
+      future,
+      abort: SpawnHandle::new(handle),
+    });
+    subscription
   }
 }
 
-impl<Item, F, S> LocalEmitter<'static> for FutureEmitter<F, S>
-where
-  F: Future<Output = Item> + 'static,
-  S: LocalScheduler,
+impl<F, S> SharedPublisherFactory for FuturePublisherFactory<F, S>
+  where F: Future + Send + Sync + 'static, S: SharedScheduler
 {
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'static>>)
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
-  {
-    let subscription = subscriber.subscription.clone();
+  fn subscribe<O>(self, mut subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
 
-    let f = self
-      .future
-      .map(move |v| LocalEmitter::emit(of::OfEmitter(v), subscriber));
+    let f = self.future;
     let (future, handle) = futures::future::abortable(f);
-    self.scheduler.spawn(future.map(|_| ()));
-    subscription.add(SpawnHandle::new(handle))
+    self.scheduler.spawn(future.map(move |v| {
+      if let Ok(output) = v {
+        subscriber.observer.next(output);
+        subscriber.observer.complete();
+      }
+    }));
+    let subscription = SharedSubscription::default();
+    subscription.add(SharedFuturePublisher{
+      future,
+      abort: SpawnHandle::new(handle),
+    });
+    subscription
   }
 }
+
 
 /// Converts a `Future` to an observable sequence like
 /// [`from_future@from_future`]. But only work for which `Future::Output` is
@@ -95,12 +144,12 @@ where
 pub fn from_future_result<F, S, Item, Err>(
   future: F,
   scheduler: S,
-) -> ObservableBase<FutureResultEmitter<F, S, Item, Err>>
+) -> ObservableBase<FutureResultPublisherFactory<F, S, Item, Err>>
 where
   F: Future,
   <F as Future>::Output: Into<Result<Item, Err>>,
 {
-  ObservableBase::new(FutureResultEmitter {
+  ObservableBase::new(FutureResultPublisherFactory {
     future,
     scheduler,
     marker: TypeHint::new(),
@@ -108,64 +157,100 @@ where
 }
 
 #[derive(Clone)]
-pub struct FutureResultEmitter<F, S, Item, Err> {
+pub struct FutureResultPublisherFactory<F, S, Item, Err> {
   future: F,
   scheduler: S,
   marker: TypeHint<(Item, Err)>,
 }
 
-impl<Item, S, Err, F> Emitter for FutureResultEmitter<F, S, Item, Err>
-where
-  F: Future,
-  <F as Future>::Output: Into<Result<Item, Err>>,
-{
+impl<F, S, Item, Err> PublisherFactory for FutureResultPublisherFactory<F, S, Item, Err> {
   type Item = Item;
   type Err = Err;
 }
 
-impl<Item, Err, S, F> SharedEmitter for FutureResultEmitter<F, S, Item, Err>
-where
-  Item: Send + Sync + 'static,
-  Err: Send + Sync + 'static,
-  F: Future + Send + Clone + Sync + 'static,
-  <F as Future>::Output: Into<Result<Item, Err>>,
-  S: SharedScheduler,
+impl<'a, F, S, Item, Err> LocalPublisherFactory<'a> for FutureResultPublisherFactory<F, S, Item, Err> where
+  F: Future<Output=Self::Item> + 'a
 {
-  fn emit<O>(self, subscriber: Subscriber<O, SharedSubscription>)
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  {
-    let subscription = subscriber.subscription.clone();
+  fn subscribe<O>(self, mut subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
 
     let f = self.future.map(move |v| {
-      SharedEmitter::emit(of::ResultEmitter(v.into()), subscriber)
+      subscriber.observer.next(v);
+      subscriber.observer.complete();
     });
     let (future, handle) = futures::future::abortable(f);
-    self.scheduler.spawn(future.map(|_| ()));
-    subscription.add(SpawnHandle::new(handle))
+    let subscription = LocalSubscription::default();
+    subscription.add(
+      LocalFutureResultPublisher{
+        future,
+        abort: SpawnHandle::new(handle),
+      }
+    );
+    subscription
+  }
+}
+impl<F, S, Item, Err> SharedPublisherFactory for FutureResultPublisherFactory<F, S, Item, Err>
+where S: SharedScheduler, F: Future<Output=Self::Item> + Send + Sync + 'static
+{
+  fn subscribe<O>(self, mut subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+
+    let f = self.future.map(move |v| {
+      subscriber.observer.next(v);
+      subscriber.observer.complete();
+    });
+    let (future, handle) = futures::future::abortable(f);
+    let subscription = SharedSubscription::default();
+    subscription.add(
+      SharedFutureResultPublisher{
+        future,
+        abort: SpawnHandle::new(handle),
+      }
+    );
+    subscription
   }
 }
 
-impl<Item, Err, S, F> LocalEmitter<'static>
-  for FutureResultEmitter<F, S, Item, Err>
-where
-  F: Future + 'static,
-  <F as Future>::Output: Into<Result<Item, Err>>,
-  S: LocalScheduler,
-{
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'static>>)
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
-  {
-    let subscription = subscriber.subscription.clone();
-    let f = self.future.map(move |v| {
-      LocalEmitter::emit(of::ResultEmitter(v.into()), subscriber)
-    });
-    let (future, handle) = futures::future::abortable(f);
-    self.scheduler.spawn(future.map(|_| ()));
-    subscription.add(SpawnHandle::new(handle))
+#[derive(Clone)]
+pub struct LocalFutureResultPublisher<F> {
+  future: F,
+  abort: SpawnHandle
+}
+
+impl<F> SubscriptionLike for LocalFutureResultPublisher<F> {
+  fn request(&mut self, requested: u128) {
+    todo!()
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
   }
 }
+
+#[derive(Clone)]
+pub struct SharedFutureResultPublisher<F> {
+  future: F,
+  abort: SpawnHandle
+}
+
+impl<F> SubscriptionLike for SharedFutureResultPublisher<F> {
+  fn request(&mut self, requested: u128) {
+    todo!()
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -186,6 +271,15 @@ mod tests {
     let res = Arc::new(Mutex::new(0));
     let c_res = res.clone();
     let pool = ThreadPool::new().unwrap();
+    // from_future
+    let res = c_res.clone();
+    from_future(future::ready(2), pool)
+        .into_shared()
+        .subscribe(move |v| {
+          *res.lock().unwrap() = v;
+        });
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    assert_eq!(*c_res.lock().unwrap(), 2);
     {
       from_future_result(future::ok(1), pool.clone())
         .into_shared()
@@ -195,15 +289,7 @@ mod tests {
       std::thread::sleep(std::time::Duration::from_millis(10));
       assert_eq!(*c_res.lock().unwrap(), 1);
     }
-    // from_future
-    let res = c_res.clone();
-    from_future(future::ready(2), pool)
-      .into_shared()
-      .subscribe(move |v| {
-        *res.lock().unwrap() = v;
-      });
-    std::thread::sleep(std::time::Duration::from_millis(10));
-    assert_eq!(*c_res.lock().unwrap(), 2);
+
   }
 
   #[test]

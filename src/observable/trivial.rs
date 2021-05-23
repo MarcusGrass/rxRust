@@ -5,36 +5,77 @@ use crate::prelude::*;
 /// # Arguments
 ///
 /// * `e` - An error to emit and terminate with
-pub fn throw<Err>(e: Err) -> ObservableBase<ThrowEmitter<Err>> {
-  ObservableBase::new(ThrowEmitter(e))
+pub fn throw<Err>(e: Err) -> ObservableBase<ThrowPublisherFactory<Err>> {
+  ObservableBase::new(ThrowPublisherFactory(e))
 }
 
 #[derive(Clone)]
-pub struct ThrowEmitter<Err>(Err);
+pub struct ThrowPublisherFactory<Err>(Err);
 
-#[doc(hidden)]
-macro_rules! throw_emitter {
-  ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  #[inline]
-  fn emit<O>(self, mut subscriber: Subscriber<O, $subscription>)
-  where
-    O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf
-  {
-    subscriber.error(self.0);
-  }
-}
-}
-impl<Err> Emitter for ThrowEmitter<Err> {
+impl<Err> PublisherFactory for ThrowPublisherFactory<Err> {
   type Item = ();
   type Err = Err;
 }
 
-impl<'a, Err> LocalEmitter<'a> for ThrowEmitter<Err> {
-  throw_emitter!(LocalSubscription, 'a);
+impl<'a, Err: 'a> LocalPublisherFactory<'a> for ThrowPublisherFactory<Err> {
+  fn subscribe<O>(self, mut subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+    let sub = LocalThrowPublisher{
+      err_supplier: move || subscriber.observer.error(self.0)
+    };
+    LocalSubscription::new(sub)
+  }
 }
 
-impl<Err> SharedEmitter for ThrowEmitter<Err> {
-  throw_emitter!(SharedSubscription, Send + Sync + 'static);
+impl<Err: Send + Sync + 'static> SharedPublisherFactory for ThrowPublisherFactory<Err> {
+  fn subscribe<O>(self, mut subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    let sub = SharedThrowPublisher{
+      err_supplier: move || subscriber.observer.error(self.0)
+    };
+    SharedSubscription::new(sub)
+  }
+}
+
+#[derive(Clone)]
+struct LocalThrowPublisher<F> {
+  err_supplier: F
+}
+
+
+impl<F> SubscriptionLike for LocalThrowPublisher<F>
+where F: FnOnce() -> ()
+{
+  fn request(&mut self, _: u128) {
+    (self.err_supplier)();
+  }
+
+  fn unsubscribe(&mut self) {
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
+#[derive(Clone)]
+struct SharedThrowPublisher<F> {
+  err_supplier: F,
+}
+
+impl<F> SubscriptionLike for SharedThrowPublisher<F>
+  where F: FnOnce() -> ()
+{
+  fn request(&mut self, _: u128) {
+    (self.err_supplier)();
+  }
+
+  fn unsubscribe(&mut self) {
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
 }
 
 /// Creates an observable that produces no values.
@@ -50,73 +91,100 @@ impl<Err> SharedEmitter for ThrowEmitter<Err> {
 ///
 /// // Result: no thing printed
 /// ```
-pub fn empty<Item>() -> ObservableBase<EmptyEmitter<Item>> {
-  ObservableBase::new(EmptyEmitter(TypeHint::new()))
+pub fn empty<Item>() -> ObservableBase<EmptyPublisherFactory<Item>> {
+  ObservableBase::new(EmptyPublisherFactory(TypeHint::new()))
 }
 
 #[derive(Clone)]
 pub struct EmptyEmitter<Item>(TypeHint<Item>);
 
-#[doc(hidden)]
-macro_rules! empty_emitter {
-  ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-    #[inline]
-    fn emit<O>(self, mut subscriber: Subscriber<O, $subscription>)
-    where
-      O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf
-    {
-      subscriber.complete();
-    }
-  }
-}
+#[derive(Clone)]
+pub struct EmptyPublisherFactory<Item>(TypeHint<Item>);
 
-impl<Item> Emitter for EmptyEmitter<Item> {
+impl<Item> PublisherFactory for EmptyPublisherFactory<Item> {
   type Item = Item;
   type Err = ();
 }
 
-impl<'a, Item> LocalEmitter<'a> for EmptyEmitter<Item> {
-  empty_emitter!(LocalSubscription, 'a);
+struct LocalEmptyPublisherFactory<'a, O> {
+  sub: Subscriber<O, LocalSubscription<'a>>
 }
 
-impl<Item> SharedEmitter for EmptyEmitter<Item> {
-  empty_emitter!(SharedSubscription, Send + Sync + 'static);
+struct SharedEmptyPublisherFactory<O> {
+  sub: Subscriber<O, SharedSubscription>
 }
+
+impl<'a, O> SubscriptionLike for LocalEmptyPublisherFactory<'a, O>
+  where O: Observer + 'a {
+  fn request(&mut self, requested: u128) {
+    self.sub.observer.complete();
+  }
+
+  fn unsubscribe(&mut self) {
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
+impl<O> SubscriptionLike for SharedEmptyPublisherFactory<O> where O: Observer + Send + Sync + 'static {
+  fn request(&mut self, requested: u128) {
+    self.sub.observer.complete();
+  }
+
+  fn unsubscribe(&mut self) {
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
+impl<'a, Item> LocalPublisherFactory<'a> for EmptyPublisherFactory<Item> {
+  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+    LocalSubscription::new(LocalEmptyPublisherFactory{sub: subscriber})
+  }
+}
+
+impl<Item> SharedPublisherFactory for EmptyPublisherFactory<Item> {
+  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    SharedSubscription::new(SharedEmptyPublisherFactory{sub: subscriber})
+  }
+}
+
 /// Creates an observable that never emits anything.
 ///
 /// Neither emits a value, nor completes, nor emits an error.
-pub fn never() -> ObservableBase<NeverEmitter> {
-  ObservableBase::new(NeverEmitter())
+pub fn never() -> ObservableBase<NeverEmitterPublisherFactory> {
+  ObservableBase::new(NeverEmitterPublisherFactory)
 }
 
 #[derive(Clone)]
 pub struct NeverEmitter();
 
-#[doc(hidden)]
-macro_rules! never_emitter {
-  ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  #[inline]
-  fn emit<O>(self, _subscriber: Subscriber<O, $subscription>)
-  where
-    O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf
-  {
-  }
-}
-}
+#[derive(Clone)]
+struct NeverEmitterPublisherFactory;
 
-impl Emitter for NeverEmitter {
+impl PublisherFactory for NeverEmitterPublisherFactory {
   type Item = ();
   type Err = ();
 }
 
-impl<'a> LocalEmitter<'a> for NeverEmitter {
-  #[inline]
-  never_emitter!(LocalSubscription, 'a);
+impl<'a> LocalPublisherFactory<'a> for NeverEmitterPublisherFactory {
+  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+    LocalSubscription::new(subscriber)
+  }
 }
 
-impl SharedEmitter for NeverEmitter {
-  #[inline]
-  never_emitter!(SharedSubscription, Send + Sync + 'static);
+impl SharedPublisherFactory for NeverEmitterPublisherFactory {
+  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    SharedSubscription::new(subscriber)
+  }
 }
 
 #[cfg(test)]

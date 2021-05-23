@@ -28,57 +28,126 @@ use std::iter::{Repeat, Take};
 /// observable::from_iter(vec![0,1,2,3])
 ///   .subscribe(|v| {println!("{},", v)});
 /// ```
-pub fn from_iter<Iter, Item>(iter: Iter) -> ObservableBase<IterEmitter<Iter>>
-where
-  Iter: IntoIterator<Item = Item>,
+///
+pub fn from_iter<Iter, Item>(iter: Iter) -> ObservableBase<IterPublisherFactory<Iter>>
+  where
+      Iter: IntoIterator<Item = Item>,
 {
-  ObservableBase::new(IterEmitter(iter))
+  ObservableBase::new(IterPublisherFactory(iter))
 }
 
 #[derive(Clone)]
-pub struct IterEmitter<Iter>(Iter);
+pub struct LocalIterPublisher<'a, Iter, O> {
+  it: Iter,
+  sub: Subscriber<O, LocalSubscription<'a>>,
+  cursor: u128,
+}
 
-#[doc(hidden)]
-macro_rules! iter_emitter {
-  ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn emit<O>(self, mut subscriber: Subscriber<O, $subscription>)
+#[derive(Clone)]
+pub struct SharedIterPublisher<Iter, O> {
+  it: Iter,
+  sub: Subscriber<O, SharedSubscription>,
+  cursor: u128,
+}
+
+#[derive(Clone)]
+pub struct IterPublisherFactory<Iter>(Iter);
+
+impl<Iter> PublisherFactory for IterPublisherFactory<Iter>
   where
-    O: Observer<Item=Self::Item, Err=Self::Err> + $($marker +)* $lf
-  {
-    for v in self.0.into_iter() {
-      if !subscriber.is_finished() {
-        subscriber.next(v);
-      } else {
-        break;
-      }
-    }
-    if !subscriber.is_finished() {
-      subscriber.complete();
-    }
-  }
-}
-}
-
-impl<Iter, Item> Emitter for IterEmitter<Iter>
-where
-  Iter: IntoIterator<Item = Item>,
+      Iter: IntoIterator,
 {
-  type Item = Item;
+  type Item = Iter::Item;
   type Err = ();
 }
 
-impl<'a, Iter, Item> LocalEmitter<'a> for IterEmitter<Iter>
-where
-  Iter: IntoIterator<Item = Item>,
+impl<'a, Iter> LocalPublisherFactory<'a> for IterPublisherFactory<Iter>
+  where
+      Iter: IntoIterator + Clone + 'a,
 {
-  iter_emitter!(LocalSubscription, 'a);
+  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+    let publisher = LocalIterPublisher {it: self.0, sub: subscriber, cursor: 0};
+    LocalSubscription::new(publisher)
+  }
 }
 
-impl<Iter, Item> SharedEmitter for IterEmitter<Iter>
-where
-  Iter: IntoIterator<Item = Item>,
+impl<Iter> SharedPublisherFactory for IterPublisherFactory<Iter>
+  where
+      Iter: IntoIterator + Send + Sync + Clone + 'static,
 {
-  iter_emitter!(SharedSubscription, Send + Sync + 'static);
+  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    let publisher = SharedIterPublisher {it: self.0, sub: subscriber, cursor: 0};
+    SharedSubscription::new(publisher)
+  }
+}
+
+impl<Iter, O> SubscriptionLike for SharedIterPublisher<Iter, O>
+  where Iter: IntoIterator + Clone + 'static,
+        O: Observer<Item=Iter::Item> + 'static
+{
+  fn request(&mut self, requested: u128) {
+    let mut it = self.it.clone().into_iter()
+        .skip(self.cursor as usize);
+    let mut provided = 0;
+    let mut v: Option<O::Item>;
+    loop {
+      v = it.next();
+      if v.is_some() {
+        self.sub.observer.next(v.unwrap());
+        provided += 1;
+      } else {
+        self.sub.observer.complete();
+        break;
+      }
+      if provided >= requested {
+        break;
+      }
+    }
+    self.cursor += provided;
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+impl<'a, Iter, O> SubscriptionLike for LocalIterPublisher<'a, Iter, O>
+  where Iter: IntoIterator + Clone + 'a,
+        O: Observer<Item=Iter::Item> + 'a
+{
+  fn request(&mut self, requested: u128) {
+    let mut it = self.it.clone().into_iter()
+        .skip(self.cursor as usize);
+    let mut provided = 0;
+    let mut v: Option<O::Item>;
+    loop {
+      v = it.next();
+      if v.is_some() {
+        self.sub.observer.next(v.unwrap());
+        provided += 1;
+      } else {
+        self.sub.observer.complete();
+        break;
+      }
+      if provided >= requested {
+        break;
+      }
+    }
+    self.cursor += provided;
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
 }
 
 /// Creates an observable producing same value repeated N times.
@@ -106,7 +175,7 @@ where
 pub fn repeat<Item>(
   v: Item,
   n: usize,
-) -> ObservableBase<IterEmitter<Take<Repeat<Item>>>>
+) -> ObservableBase<IterPublisherFactory<Take<Repeat<Item>>>>
 where
   Item: Clone,
 {

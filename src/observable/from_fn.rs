@@ -7,62 +7,91 @@ use crate::prelude::*;
 /// completion.
 pub fn create<F, O, U, Item, Err>(
   subscribe: F,
-) -> ObservableBase<FnEmitter<F, Item, Err>>
+) -> ObservableBase<FnPublisherFactory<F, Item, Err>>
 where
   F: FnOnce(Subscriber<O, U>),
   O: Observer<Item = Item, Err = Err>,
   U: SubscriptionLike,
 {
-  ObservableBase::new(FnEmitter(subscribe, TypeHint::new()))
+  ObservableBase::new(FnPublisherFactory(subscribe, TypeHint::new()))
 }
 
 #[derive(Clone)]
-pub struct FnEmitter<F, Item, Err>(F, TypeHint<(Item, Err)>);
+struct FnPublisherFactory<F, Item, Err>(F, TypeHint<(Item, Err)>);
 
-impl<F, Item, Err> Emitter for FnEmitter<F, Item, Err> {
+impl<F, Item, Err> PublisherFactory for FnPublisherFactory<F, Item, Err> {
   type Item = Item;
   type Err = Err;
 }
 
-impl<'a, F, Item, Err> LocalEmitter<'a> for FnEmitter<F, Item, Err>
-where
-  F: FnOnce(
-    Subscriber<
-      Box<dyn Observer<Item = Item, Err = Err> + 'a>,
-      Box<dyn SubscriptionLike + 'a>,
-    >,
-  ),
-{
-  fn emit<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>)
+impl<'a, F: 'a, Item: 'a, Err: 'a> LocalPublisherFactory<'a> for FnPublisherFactory<F, Item, Err>
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
-  {
-    (self.0)(Subscriber {
-      observer: Box::new(subscriber.observer),
-      subscription: Box::new(subscriber.subscription),
+      F: FnOnce(Subscriber<Box<dyn Observer<Item = Item, Err = Err> + 'a>, Box<dyn SubscriptionLike + 'a>, >, ),
+{
+  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
+      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+    LocalSubscription::new(LocalFnPublisher{
+      func: move || (self.0)(Subscriber{
+        observer: Box::new(subscriber.observer),
+        subscription: Box::new(subscriber.subscription),
+      })
     })
   }
 }
 
-impl<F, Item, Err> SharedEmitter for FnEmitter<F, Item, Err>
-where
-  F: FnOnce(
-    Subscriber<
-      Box<dyn Observer<Item = Item, Err = Err> + Send + Sync + 'static>,
-      SharedSubscription,
-    >,
-  ),
-{
-  fn emit<O>(self, subscriber: Subscriber<O, SharedSubscription>)
+#[derive(Clone)]
+struct LocalFnPublisher<F> {
+  func: F
+}
+
+impl<F> SubscriptionLike for LocalFnPublisher<F> where F: FnOnce() -> (){
+  fn request(&mut self, _: u128) {
+    (self.func)();
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
+#[derive(Clone)]
+struct SharedFnPublisher<F> {
+  func: F
+}
+
+impl<F> SubscriptionLike for SharedFnPublisher<F> where F: FnOnce() -> (){
+  fn request(&mut self, _: u128) {
+    (self.func)();
+  }
+
+  fn unsubscribe(&mut self) {
+    todo!()
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
+impl<F: 'static, Item: 'static, Err: 'static> SharedPublisherFactory for FnPublisherFactory<F, Item, Err>
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  {
-    (self.0)(Subscriber {
-      observer: Box::new(subscriber.observer),
-      subscription: subscriber.subscription,
+      F: FnOnce(Subscriber<Box<dyn Observer<Item = Item, Err = Err> + 'static>, Box<dyn SubscriptionLike + 'static>, >, ) + Send + Sync
+{
+  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    SharedSubscription::new(SharedFnPublisher{
+      func: move || (self.0)(Subscriber{
+        observer: Box::new(subscriber.observer),
+        subscription: Box::new(subscriber.subscription),
+      })
     })
   }
 }
+
 
 #[cfg(test)]
 mod test {

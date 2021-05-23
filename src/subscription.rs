@@ -7,12 +7,11 @@ use std::{
   rc::Rc,
   sync::{Arc, Mutex},
 };
-use crate::subscriber::Subscription;
 
 /// Subscription returns from `Observable.subscribe(Subscriber)` to allow
 ///  unsubscribing.
 pub trait SubscriptionLike {
-  fn request(&self, requested: u128);
+  fn request(&mut self, requested: u128);
 
   /// This allows deregistering an stream before it has finished receiving all
   /// events (i.e. before onCompleted is called).
@@ -33,6 +32,11 @@ impl Debug for Box<dyn SubscriptionLike> {
 pub struct LocalSubscription<'a>(Rc<RefCell<Inner<Box<dyn SubscriptionLike + 'a>>>>);
 
 impl<'a> LocalSubscription<'a> {
+  pub fn new <S: SubscriptionLike + 'a>(sub: S) -> Self {
+    let subscription = LocalSubscription::default();
+    subscription.add(sub);
+    subscription
+  }
   pub fn add<S: SubscriptionLike + 'a>(&self, subscription: S) {
     self.0.borrow_mut().add(Box::new(subscription))
   }
@@ -49,7 +53,7 @@ pub trait TearDownSize: SubscriptionLike {
 
 impl<'a> SubscriptionLike for LocalSubscription<'a> {
   #[inline]
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     self.0.request(requested)
   }
 
@@ -66,6 +70,12 @@ pub struct SharedSubscription(
 );
 
 impl SharedSubscription {
+  pub fn new<S: SubscriptionLike + Send + Sync + 'static>(sub: S) -> Self {
+    let subscription = SharedSubscription::default();
+    subscription.add(sub);
+    subscription
+  }
+
   pub fn add<S: SubscriptionLike + Send + Sync + 'static>(
     &self,
     subscription: S,
@@ -90,7 +100,7 @@ impl TearDownSize for SharedSubscription {
 
 impl SubscriptionLike for SharedSubscription {
   #[inline]
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     self.0.request(requested);
   }
 
@@ -122,8 +132,8 @@ impl<T> Debug for Inner<T> {
 }
 
 impl<T: SubscriptionLike> SubscriptionLike for Inner<T> {
-  fn request(&self, requested: u128) {
-      for v in &self.teardown {
+  fn request(&mut self, requested: u128) {
+      for v in &mut self.teardown {
         v.request(requested);
       }
   }
@@ -165,7 +175,7 @@ impl<T> SubscriptionLike for Arc<Mutex<T>>
 where
   T: SubscriptionLike,
 {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     self.lock().unwrap().request(requested);
   }
 
@@ -180,7 +190,7 @@ impl<T> SubscriptionLike for Rc<RefCell<T>>
 where
   T: SubscriptionLike,
 {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     self.borrow().request(requested);
   }
 
@@ -195,8 +205,8 @@ impl<T: ?Sized> SubscriptionLike for Box<T>
 where
   T: SubscriptionLike,
 {
-  fn request(&self, requested: u128) {
-    let s = &**self;
+  fn request(&mut self, requested: u128) {
+    let s = &mut **self;
     s.request(requested);
   }
 
@@ -234,7 +244,7 @@ impl<T: SubscriptionLike> SubscriptionWrapper<T> {
 }
 
 impl<T: SubscriptionLike> SubscriptionLike for SubscriptionWrapper<T> {
-  fn request(&self, requested: u128) {
+  fn request(&mut self, requested: u128) {
     self.0.request(requested);
   }
   #[inline]
