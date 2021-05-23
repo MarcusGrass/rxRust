@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl, is_stopped_proxy_impl};
 use std::ops::Sub;
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub struct TakeOp<S> {
@@ -9,27 +10,39 @@ pub struct TakeOp<S> {
 }
 
 pub struct TakeOpSubscription<S> {
-  pub(crate) source: S,
+  pub(crate) source: Arc<RwLock<Option<S>>>,
   pub(crate) count: u128,
   pub(crate) done: bool,
 }
 
+impl<S> Clone for TakeOpSubscription<S> {
+  fn clone(&self) -> Self {
+    if self.source.read().unwrap().is_none() {
+      TakeOpSubscription{
+        source: self.source.clone(),
+        count: self.count,
+        done: self.done
+      }
+    } else {
+      panic!()
+    }
+  }
+}
+
 impl<S> SubscriptionLike for TakeOpSubscription<S> where S: SubscriptionLike {
   fn request(&mut self, requested: u128) {
-    println!("{:?}", "requested");
     if !self.done {
-      self.source.request(self.count); //TODO: Only request once and enable requesting less at a time
+      self.source.write().unwrap().as_mut().unwrap().request(self.count); //TODO: Only request once and enable requesting less at a time
       self.done = true;
     }
   }
 
   fn unsubscribe(&mut self) {
-    println!("{:?}", "unsub take");
-    self.source.unsubscribe();
+    self.source.write().unwrap().as_mut().unwrap().unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
-    self.source.is_closed() // Todo: check correctness
+    self.source.write().unwrap().as_mut().unwrap().is_closed() // Todo: check correctness
   }
 }
 
@@ -46,8 +59,10 @@ where
     subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub
     where O: Observer<Item=Self::Item,Err= Self::Err> + 'a {
-    let subscriber = Subscriber {
+    let take_op_subscription = TakeOpSubscription { source: Arc::new(RwLock::new(None)), count: self.count as u128, done: false };
+    let mut subscriber = Subscriber {
     observer: TakeObserver {
+      source_sub: take_op_subscription.clone(),
       observer: subscriber.observer,
       count: self.count,
       hits: 0,
@@ -55,7 +70,8 @@ where
       subscription: subscriber.subscription,
     };
     let source_sub = self.source.actual_subscribe(subscriber);
-    LocalSubscription::new(TakeOpSubscription{ source: source_sub, count: self.count as u128, done: false })
+    *take_op_subscription.source.write().unwrap() = Some(source_sub);
+    LocalSubscription::new(take_op_subscription)
     }
 }
 
@@ -63,33 +79,39 @@ impl<S> SharedObservable for TakeOp<S>
 where
   S: SharedObservable,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
   fn actual_subscribe<O>(
     self,
     subscriber: Subscriber<O, SharedSubscription>,
   ) -> Self::Unsub
     where O: Observer<Item=Self::Item,Err= Self::Err> + Send + Sync + 'static {
+    let take_op_subscription = TakeOpSubscription { source: Arc::new(RwLock::new(None)), count: self.count as u128, done: false };
     let subscriber = Subscriber {
       observer: TakeObserver {
+        source_sub: take_op_subscription.clone(),
         observer: subscriber.observer,
         count: self.count,
         hits: 0,
       },
       subscription: subscriber.subscription,
     };
-    self.source.actual_subscribe(subscriber)
+    let source_sub = self.source.actual_subscribe(subscriber);
+    *take_op_subscription.source.write().unwrap() = Some(source_sub);
+    SharedSubscription::new(take_op_subscription)
   }
 }
 
-pub struct TakeObserver<O> {
+pub struct TakeObserver<O, S> {
+  source_sub: TakeOpSubscription<S>,
   observer: O,
   count: u32,
   hits: u32,
 }
 
-impl<O, Item, Err> Observer for TakeObserver<O>
+impl<O, S, Item, Err> Observer for TakeObserver<O, S>
 where
   O: Observer<Item = Item, Err = Err>,
+  S: SubscriptionLike
 {
   type Item = Item;
   type Err = Err;
@@ -99,7 +121,7 @@ where
       self.observer.next(value);
       if self.hits == self.count {
         self.complete();
-        println!("{:?}", "called complete");
+        self.source_sub.source.write().unwrap().as_mut().unwrap().unsubscribe();
       }
     }
   }

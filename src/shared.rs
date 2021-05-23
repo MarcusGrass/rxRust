@@ -6,7 +6,7 @@ use crate::prelude::*;
 pub struct Shared<R>(pub(crate) R);
 
 pub trait SharedObservable: Observable {
-  type Unsub: SubscriptionLike + 'static;
+  type Unsub: SubscriptionLike + Send + Sync + 'static;
   fn actual_subscribe<
     O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(

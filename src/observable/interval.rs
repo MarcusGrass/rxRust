@@ -60,7 +60,6 @@ where S: LocalScheduler
       self.dur,
       self.at,
     );
-    println!("{:?}", "init sub");
     LocalSubscription::new(IntervalPublisher {
       dur: self.dur,
       at: self.at,
@@ -108,12 +107,10 @@ struct IntervalPublisher {
 
 impl SubscriptionLike for IntervalPublisher {
   fn request(&mut self, requested: u128) {
-    println!("{:?}", "req");
     *self.requested.write().unwrap() += requested;
   }
 
   fn unsubscribe(&mut self) {
-    println!("{:?}", "unsub");
     self.abort.unsubscribe();
   }
 
@@ -153,11 +150,9 @@ mod tests {
     let stamp = Instant::now();
     let ticks = Arc::new(Mutex::new(0));
     let ticks_c = Arc::clone(&ticks);
-    println!("{:?}", "Start");
     interval(Duration::from_millis(1), local.spawner())
       .take(5)
       .subscribe(move |_| (*ticks_c.lock().unwrap()) += 1);
-    println!("{:?}", "end");
     local.run();
     assert_eq!(*ticks.lock().unwrap(), 5);
     assert!(stamp.elapsed() > Duration::from_millis(5));
