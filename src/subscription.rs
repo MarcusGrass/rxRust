@@ -191,7 +191,7 @@ where
   T: SubscriptionLike,
 {
   fn request(&mut self, requested: u128) {
-    self.borrow().request(requested);
+    self.borrow_mut().request(requested);
   }
 
   #[inline]

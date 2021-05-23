@@ -17,37 +17,40 @@ impl<Err> PublisherFactory for ThrowPublisherFactory<Err> {
   type Err = Err;
 }
 
-impl<'a, Err: 'a> LocalPublisherFactory<'a> for ThrowPublisherFactory<Err> {
+impl<'a, Err: Clone + 'a> LocalPublisherFactory<'a> for ThrowPublisherFactory<Err> {
   fn subscribe<O>(self, mut subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
       O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
     let sub = LocalThrowPublisher{
-      err_supplier: move || subscriber.observer.error(self.0)
+      err: self.0,
+      sub: subscriber,
     };
     LocalSubscription::new(sub)
   }
 }
 
-impl<Err: Send + Sync + 'static> SharedPublisherFactory for ThrowPublisherFactory<Err> {
+impl<Err: Clone + Send + Sync + 'static> SharedPublisherFactory for ThrowPublisherFactory<Err> {
   fn subscribe<O>(self, mut subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
       O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let sub = SharedThrowPublisher{
-      err_supplier: move || subscriber.observer.error(self.0)
+      err: self.0,
+      sub: subscriber
     };
     SharedSubscription::new(sub)
   }
 }
 
 #[derive(Clone)]
-struct LocalThrowPublisher<F> {
-  err_supplier: F
+struct LocalThrowPublisher<'a, Err, O> {
+  err: Err,
+  sub: Subscriber<O, LocalSubscription<'a>>,
 }
 
 
-impl<F> SubscriptionLike for LocalThrowPublisher<F>
-where F: FnOnce() -> ()
+impl<'a, Err: Clone, O> SubscriptionLike for LocalThrowPublisher<'a, Err, O>
+where O: Observer<Err=Err>
 {
   fn request(&mut self, _: u128) {
-    (self.err_supplier)();
+    self.sub.observer.error(self.err.clone());
   }
 
   fn unsubscribe(&mut self) {
@@ -59,15 +62,16 @@ where F: FnOnce() -> ()
 }
 
 #[derive(Clone)]
-struct SharedThrowPublisher<F> {
-  err_supplier: F,
+struct SharedThrowPublisher<Err, O> {
+  err: Err,
+  sub: Subscriber<O, SharedSubscription>,
 }
 
-impl<F> SubscriptionLike for SharedThrowPublisher<F>
-  where F: FnOnce() -> ()
+impl<Err: Clone, O> SubscriptionLike for SharedThrowPublisher<Err, O>
+  where O: Observer<Err=Err>
 {
   fn request(&mut self, _: u128) {
-    (self.err_supplier)();
+    self.sub.observer.error(self.err.clone());
   }
 
   fn unsubscribe(&mut self) {
@@ -116,7 +120,7 @@ struct SharedEmptyPublisherFactory<O> {
 
 impl<'a, O> SubscriptionLike for LocalEmptyPublisherFactory<'a, O>
   where O: Observer + 'a {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, _: u128) {
     self.sub.observer.complete();
   }
 
@@ -129,7 +133,7 @@ impl<'a, O> SubscriptionLike for LocalEmptyPublisherFactory<'a, O>
 }
 
 impl<O> SubscriptionLike for SharedEmptyPublisherFactory<O> where O: Observer + Send + Sync + 'static {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, _: u128) {
     self.sub.observer.complete();
   }
 
@@ -166,7 +170,7 @@ pub fn never() -> ObservableBase<NeverEmitterPublisherFactory> {
 pub struct NeverEmitter();
 
 #[derive(Clone)]
-struct NeverEmitterPublisherFactory;
+pub struct NeverEmitterPublisherFactory;
 
 impl PublisherFactory for NeverEmitterPublisherFactory {
   type Item = ();

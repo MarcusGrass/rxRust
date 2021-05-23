@@ -17,7 +17,7 @@ where
 }
 
 #[derive(Clone)]
-struct FnPublisherFactory<F, Item, Err>(F, TypeHint<(Item, Err)>);
+pub struct FnPublisherFactory<F, Item, Err>(F, TypeHint<(Item, Err)>);
 
 impl<F, Item, Err> PublisherFactory for FnPublisherFactory<F, Item, Err> {
   type Item = Item;
@@ -46,7 +46,6 @@ struct LocalFnPublisher<F> {
 
 impl<F> SubscriptionLike for LocalFnPublisher<F> where F: FnOnce() -> (){
   fn request(&mut self, _: u128) {
-    (self.func)();
   }
 
   fn unsubscribe(&mut self) {
@@ -65,7 +64,7 @@ struct SharedFnPublisher<F> {
 
 impl<F> SubscriptionLike for SharedFnPublisher<F> where F: FnOnce() -> (){
   fn request(&mut self, _: u128) {
-    (self.func)();
+    // TODO: (self.func)();
   }
 
   fn unsubscribe(&mut self) {

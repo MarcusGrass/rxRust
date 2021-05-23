@@ -57,7 +57,7 @@ pub fn of<Item>(v: Item) -> ObservableBase<OfPublisherFactory<Item>> {
 }
 
 #[derive(Clone)]
-struct OfPublisherFactory<Item>(Item);
+pub struct OfPublisherFactory<Item>(Item);
 
 impl<Item> PublisherFactory for OfPublisherFactory<Item> {
   type Item = Item;
@@ -151,7 +151,7 @@ pub fn of_result<Item, Err>(
 }
 
 #[derive(Clone)]
-struct OfResultPublisherFactory<Item, Err>(Result<Item, Err>);
+pub struct OfResultPublisherFactory<Item, Err>(Result<Item, Err>);
 
 impl<Item, Err> PublisherFactory for OfResultPublisherFactory<Item, Err> {
   type Item = Item;
@@ -247,7 +247,7 @@ pub fn of_option<Item>(o: Option<Item>) -> ObservableBase<OfOptionPublisherFacto
   ObservableBase::new(OfOptionPublisherFactory(o))
 }
 #[derive(Clone)]
-struct OfOptionPublisherFactory<Item>(Option<Item>);
+pub struct OfOptionPublisherFactory<Item>(Option<Item>);
 
 impl<Item> PublisherFactory for OfOptionPublisherFactory<Item> {
   type Item = Item;
@@ -340,7 +340,7 @@ where
 }
 
 #[derive(Clone)]
-struct OfFnPublisherFactory<F, Item>(F, TypeHint<Item>);
+pub struct OfFnPublisherFactory<F, Item>(F, TypeHint<Item>);
 
 impl<F, Item> PublisherFactory for OfFnPublisherFactory<F, Item> {
   type Item = Item;
@@ -348,7 +348,7 @@ impl<F, Item> PublisherFactory for OfFnPublisherFactory<F, Item> {
 }
 
 impl<'a, F: 'a, Item: 'a> LocalPublisherFactory<'a> for OfFnPublisherFactory<F, Item> where
-    F: FnOnce() -> Item
+    F: Fn() -> Item
 {
   fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
       O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
@@ -362,7 +362,7 @@ struct LocalOfFnPublisher<'a, F, Item, O>(F, Subscriber<O, LocalSubscription<'a>
 impl<'a, F, Item, O> SubscriptionLike for LocalOfFnPublisher<'a, F, Item, O>
   where
       O: Observer<Item=Item> + 'a,
-      F: FnOnce() -> Item
+      F: Fn() -> Item
 {
   fn request(&mut self, _: u128) {
     self.1.observer.next((self.0)());
@@ -381,7 +381,7 @@ impl<'a, F, Item, O> SubscriptionLike for LocalOfFnPublisher<'a, F, Item, O>
 impl<F, Item, O> SubscriptionLike for SharedOfFnPublisher<F, Item, O>
   where
       O: Observer<Item=Item> + Send + Sync + 'static,
-      F: FnOnce() -> Item
+      F: Fn() -> Item
 {
   fn request(&mut self, _: u128) {
     self.1.observer.next((self.0)());
@@ -401,7 +401,7 @@ impl<F, Item, O> SubscriptionLike for SharedOfFnPublisher<F, Item, O>
 struct SharedOfFnPublisher<F, Item, O>(F, Subscriber<O, SharedSubscription>, TypeHint<Item>);
 
 impl<F, Item: 'static> SharedPublisherFactory for OfFnPublisherFactory<F, Item> where
-    F: FnOnce() -> Item + Send + Sync + 'static
+    F: Fn() -> Item + Send + Sync + 'static
 {
   fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
       O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {

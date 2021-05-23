@@ -31,7 +31,7 @@ pub fn interval_at<S>(
 }
 
 #[derive(Clone)]
-struct IntervalPublisherFactory<S> {
+pub struct IntervalPublisherFactory<S> {
   scheduler: S,
   dur: Duration,
   at: Option<Instant>,

@@ -41,14 +41,11 @@ pub struct FuturePublisherFactory<F, S> {
 }
 
 #[derive(Clone)]
-struct LocalFuturePublisher<F> {
-  future: F,
+struct LocalFuturePublisher {
   abort: SpawnHandle,
 }
 
-impl<F> SubscriptionLike for LocalFuturePublisher<F>
-  where
-      F: Future,
+impl SubscriptionLike for LocalFuturePublisher
 {
   fn request(&mut self, _: u128) {
 
@@ -64,14 +61,11 @@ impl<F> SubscriptionLike for LocalFuturePublisher<F>
 }
 
 #[derive(Clone)]
-struct SharedFuturePublisher<F> {
-  future: F,
+struct SharedFuturePublisher {
   abort: SpawnHandle,
 }
 
-impl<F> SubscriptionLike for SharedFuturePublisher<F>
-  where
-      F: Future,
+impl SubscriptionLike for SharedFuturePublisher
 {
   fn request(&mut self, _: u128) {
   }
@@ -106,7 +100,6 @@ impl<F, S> LocalPublisherFactory<'static> for FuturePublisherFactory<F, S>
     }));
     let subscription = LocalSubscription::default();
     subscription.add(LocalFuturePublisher{
-      future,
       abort: SpawnHandle::new(handle),
     });
     subscription
@@ -129,7 +122,6 @@ impl<F, S> SharedPublisherFactory for FuturePublisherFactory<F, S>
     }));
     let subscription = SharedSubscription::default();
     subscription.add(SharedFuturePublisher{
-      future,
       abort: SpawnHandle::new(handle),
     });
     subscription
@@ -168,15 +160,21 @@ impl<F, S, Item, Err> PublisherFactory for FutureResultPublisherFactory<F, S, It
   type Err = Err;
 }
 
-impl<'a, F, S, Item, Err> LocalPublisherFactory<'a> for FutureResultPublisherFactory<F, S, Item, Err> where
-  F: Future<Output=Self::Item> + 'a
+impl<'a, F: 'a, S, Item, Error> LocalPublisherFactory<'a> for FutureResultPublisherFactory<F, S, Item, Error> where
+    F: Future,
+    <F as Future>::Output: Into<Result<Item, Error>>,
 {
   fn subscribe<O>(self, mut subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
       O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
 
     let f = self.future.map(move |v| {
-      subscriber.observer.next(v);
-      subscriber.observer.complete();
+      match v.into() {
+        Ok(t) => {
+          subscriber.observer.next(t);
+          subscriber.observer.complete();
+        },
+        Err(e) => subscriber.observer.error(e),
+      }
     });
     let (future, handle) = futures::future::abortable(f);
     let subscription = LocalSubscription::default();
@@ -189,15 +187,22 @@ impl<'a, F, S, Item, Err> LocalPublisherFactory<'a> for FutureResultPublisherFac
     subscription
   }
 }
-impl<F, S, Item, Err> SharedPublisherFactory for FutureResultPublisherFactory<F, S, Item, Err>
-where S: SharedScheduler, F: Future<Output=Self::Item> + Send + Sync + 'static
+impl<F, S, Item, Error> SharedPublisherFactory for FutureResultPublisherFactory<F, S, Item, Error>
+where S: SharedScheduler,
+      F: Future + Send + Sync + 'static,
+      <F as Future>::Output: Into<Result<Item, Error>>,
 {
   fn subscribe<O>(self, mut subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
       O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
 
     let f = self.future.map(move |v| {
-      subscriber.observer.next(v);
-      subscriber.observer.complete();
+      match v.into() {
+        Ok(t) => {
+          subscriber.observer.next(t);
+          subscriber.observer.complete();
+        },
+        Err(e) => subscriber.observer.error(e),
+      }
     });
     let (future, handle) = futures::future::abortable(f);
     let subscription = SharedSubscription::default();
@@ -271,6 +276,15 @@ mod tests {
     let res = Arc::new(Mutex::new(0));
     let c_res = res.clone();
     let pool = ThreadPool::new().unwrap();
+    {
+      from_future_result(future::ok(1), pool.clone())
+          .into_shared()
+          .subscribe(move |v| {
+            *res.lock().unwrap() = v;
+          });
+      std::thread::sleep(std::time::Duration::from_millis(10));
+      assert_eq!(*c_res.lock().unwrap(), 1);
+    }
     // from_future
     let res = c_res.clone();
     from_future(future::ready(2), pool)
@@ -280,15 +294,7 @@ mod tests {
         });
     std::thread::sleep(std::time::Duration::from_millis(10));
     assert_eq!(*c_res.lock().unwrap(), 2);
-    {
-      from_future_result(future::ok(1), pool.clone())
-        .into_shared()
-        .subscribe(move |v| {
-          *res.lock().unwrap() = v;
-        });
-      std::thread::sleep(std::time::Duration::from_millis(10));
-      assert_eq!(*c_res.lock().unwrap(), 1);
-    }
+
 
   }
 

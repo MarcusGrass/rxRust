@@ -42,10 +42,6 @@ mod observable_next;
 pub use observable_next::*;
 mod observable_comp;
 
-mod defer;
-
-pub use defer::*;
-
 use crate::prelude::*;
 pub use observable_comp::*;
 

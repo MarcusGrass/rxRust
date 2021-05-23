@@ -198,9 +198,10 @@ mod test {
 
     let pool = ThreadPool::builder().pool_size(100).create().unwrap();
 
-    observable::create(|mut s| {
+    let emit_thread_c = emit_thread.clone();
+    observable::create(move |mut s| {
       (0..100).for_each(|i| s.next(i));
-      *emit_thread.lock().unwrap() = thread::current().id();
+      *emit_thread_c.lock().unwrap() = thread::current().id();
     })
     .observe_on(pool)
     .into_shared()
