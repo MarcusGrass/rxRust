@@ -39,11 +39,12 @@ where
 {
   type Unsub = S::Unsub;
   fn subscribe(self, next: N) -> SubscriptionWrapper<Self::Unsub> {
-    let unsub = self.actual_subscribe(Subscriber::local(ObserverN {
+    let mut unsub = self.actual_subscribe(Subscriber::local(ObserverN {
       next,
       is_stopped: false,
       marker: TypeHint::new(),
     }));
+    unsub.request(u128::MAX);
     SubscriptionWrapper(unsub)
   }
 }
@@ -56,11 +57,12 @@ where
 {
   type Unsub = S::Unsub;
   fn subscribe(self, next: N) -> SubscriptionWrapper<Self::Unsub> {
-    let unsub = self.0.actual_subscribe(Subscriber::shared(ObserverN {
+    let mut unsub = self.0.actual_subscribe(Subscriber::shared(ObserverN {
       next,
       is_stopped: false,
       marker: TypeHint::new(),
     }));
+    unsub.request(u128::MAX);
     SubscriptionWrapper(unsub)
   }
 }

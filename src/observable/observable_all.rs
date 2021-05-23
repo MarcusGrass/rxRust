@@ -91,7 +91,9 @@ where
       is_stopped: false,
       marker: TypeHint::new(),
     });
-    SubscriptionWrapper(self.actual_subscribe(subscriber))
+    let mut unsub = self.actual_subscribe(subscriber);
+    unsub.request(u128::MAX);
+    SubscriptionWrapper(unsub)
   }
 }
 
@@ -121,7 +123,9 @@ where
       is_stopped: false,
       marker: TypeHint::new(),
     });
-    SubscriptionWrapper(self.0.actual_subscribe(subscriber))
+    let mut unsub = self.0.actual_subscribe(subscriber);
+    unsub.request(u128::MAX);
+    SubscriptionWrapper(unsub)
   }
 }
 

@@ -66,12 +66,13 @@ where
     next: N,
     error: E,
   ) -> SubscriptionWrapper<Self::Unsub> {
-    let unsub = self.actual_subscribe(Subscriber::local(ObserverErr {
+    let mut unsub = self.actual_subscribe(Subscriber::local(ObserverErr {
       next,
       error,
       is_stopped: false,
       marker: TypeHint::new(),
     }));
+    unsub.request(u128::MAX);
     SubscriptionWrapper(unsub)
   }
 }

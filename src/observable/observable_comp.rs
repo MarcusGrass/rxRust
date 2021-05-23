@@ -56,12 +56,13 @@ where
     Self: Sized,
     S::Item: 'a,
   {
-    let unsub = self.actual_subscribe(Subscriber::local(ObserverComp {
+    let mut unsub = self.actual_subscribe(Subscriber::local(ObserverComp {
       next,
       complete,
       is_stopped: false,
       marker: TypeHint::new(),
     }));
+    unsub.request(u128::MAX);
     SubscriptionWrapper(unsub)
   }
 }
@@ -82,12 +83,13 @@ where
   where
     Self: Sized,
   {
-    let unsub = self.0.actual_subscribe(Subscriber::shared(ObserverComp {
+    let mut unsub = self.0.actual_subscribe(Subscriber::shared(ObserverComp {
       next,
       complete,
       is_stopped: false,
       marker: TypeHint::new(),
     }));
+    unsub.request(u128::MAX);
     SubscriptionWrapper(unsub)
   }
 }
