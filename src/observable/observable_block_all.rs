@@ -105,11 +105,12 @@ where
       is_stopped: stopped,
       marker: TypeHint::new(),
     });
-    let sub = SubscriptionWrapper(self.0.actual_subscribe(subscriber));
+    let mut sub = self.actual_subscribe(subscriber);
+    sub.request(u128::MAX);
     while !*stopped_c.lock().unwrap() {
       std::thread::sleep(Duration::from_millis(1))
     }
-    sub
+    SubscriptionWrapper(sub)
   }
 }
 

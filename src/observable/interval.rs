@@ -38,7 +38,7 @@ pub struct IntervalPublisherFactory<S> {
 }
 
 impl<S> PublisherFactory for IntervalPublisherFactory<S> {
-  type Item = usize;
+  type Item = u128;
   type Err = ();
 }
 
@@ -54,13 +54,14 @@ where S: LocalScheduler
     let handle = self.scheduler.schedule_repeating(
       move |i| {
         if *r_c.read().unwrap() > 0 {
-          observer.next(i);
+          observer.next(i as u128);
         }
       },
       self.dur,
       self.at,
     );
-    LocalSubscription::new(LocalIntervalPublisherFactory{
+    println!("{:?}", "init sub");
+    LocalSubscription::new(IntervalPublisher {
       dur: self.dur,
       at: self.at,
       requested,
@@ -81,13 +82,14 @@ where S: SharedScheduler
     let handle = self.scheduler.schedule_repeating(
       move |i| {
         if *r_c.read().unwrap() > 0 { // TODO: This will by default onBackpressureDrop emissions if none are requested, could cache them instead
-          observer.next(i);
+          observer.next(i as u128);
+          *r_c.write().unwrap() -= 1;
         }
       },
       self.dur,
       self.at,
     );
-    SharedSubscription::new(SharedIntervalPublisherFactory{
+    SharedSubscription::new(IntervalPublisher {
       dur: self.dur,
       at: self.at,
       requested,
@@ -96,40 +98,22 @@ where S: SharedScheduler
   }
 }
 
-struct LocalIntervalPublisherFactory {
+struct IntervalPublisher {
   dur: Duration,
   at: Option<Instant>,
-  requested: Arc<RwLock<usize>>,
+  requested: Arc<RwLock<u128>>,
   abort: SpawnHandle
 }
 
-struct SharedIntervalPublisherFactory {
-  dur: Duration,
-  at: Option<Instant>,
-  requested: Arc<RwLock<usize>>,
-  abort: SpawnHandle
-}
 
-impl SubscriptionLike for LocalIntervalPublisherFactory {
+impl SubscriptionLike for IntervalPublisher {
   fn request(&mut self, requested: u128) {
-    *self.requested.write().unwrap() += requested as usize;
+    println!("{:?}", "req");
+    *self.requested.write().unwrap() += requested;
   }
 
   fn unsubscribe(&mut self) {
-    self.abort.unsubscribe();
-  }
-
-  fn is_closed(&self) -> bool {
-    self.abort.is_closed()
-  }
-}
-
-impl SubscriptionLike for SharedIntervalPublisherFactory {
-  fn request(&mut self, requested: u128) {
-    *self.requested.write().unwrap() += requested as usize;
-  }
-
-  fn unsubscribe(&mut self) {
+    println!("{:?}", "unsub");
     self.abort.unsubscribe();
   }
 
@@ -169,9 +153,11 @@ mod tests {
     let stamp = Instant::now();
     let ticks = Arc::new(Mutex::new(0));
     let ticks_c = Arc::clone(&ticks);
+    println!("{:?}", "Start");
     interval(Duration::from_millis(1), local.spawner())
       .take(5)
       .subscribe(move |_| (*ticks_c.lock().unwrap()) += 1);
+    println!("{:?}", "end");
     local.run();
     assert_eq!(*ticks.lock().unwrap(), 5);
     assert!(stamp.elapsed() > Duration::from_millis(5));

@@ -62,6 +62,7 @@ where
 
 impl<O, U: SubscriptionLike> SubscriptionLike for Subscriber<O, U> {
   fn request(&mut self, requested: u128) {
+    self.subscription.request(requested);
   }
 
   #[inline]

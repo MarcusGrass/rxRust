@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl, is_stopped_proxy_impl};
+use std::ops::Sub;
 
 #[derive(Clone)]
 pub struct TakeOp<S> {
@@ -7,18 +8,70 @@ pub struct TakeOp<S> {
   pub(crate) count: u32,
 }
 
-#[doc(hidden)]
-macro_rules! observable_impl {
-  ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
+pub struct TakeOpSubscription<S> {
+  pub(crate) source: S,
+  pub(crate) count: u128,
+  pub(crate) done: bool,
+}
+
+impl<S> SubscriptionLike for TakeOpSubscription<S> where S: SubscriptionLike {
+  fn request(&mut self, requested: u128) {
+    println!("{:?}", "requested");
+    if !self.done {
+      self.source.request(self.count); //TODO: Only request once and enable requesting less at a time
+      self.done = true;
+    }
+  }
+
+  fn unsubscribe(&mut self) {
+    println!("{:?}", "unsub take");
+    self.source.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.source.is_closed() // Todo: check correctness
+  }
+}
+
+
+observable_proxy_impl!(TakeOp, S);
+
+impl<'a, S> LocalObservable<'a> for TakeOp<S>
+where
+  S: LocalObservable<'a>,
+{
+  type Unsub = LocalSubscription<'a>;
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    where O: Observer<Item=Self::Item,Err= Self::Err> + 'a {
+    let subscriber = Subscriber {
+    observer: TakeObserver {
+      observer: subscriber.observer,
+      count: self.count,
+      hits: 0,
+    },
+      subscription: subscriber.subscription,
+    };
+    let source_sub = self.source.actual_subscribe(subscriber);
+    LocalSubscription::new(TakeOpSubscription{ source: source_sub, count: self.count as u128, done: false })
+    }
+}
+
+impl<S> SharedObservable for TakeOp<S>
+where
+  S: SharedObservable,
+{
+  type Unsub = S::Unsub;
+  fn actual_subscribe<O>(
+    self,
+    subscriber: Subscriber<O, SharedSubscription>,
+  ) -> Self::Unsub
+    where O: Observer<Item=Self::Item,Err= Self::Err> + Send + Sync + 'static {
     let subscriber = Subscriber {
       observer: TakeObserver {
         observer: subscriber.observer,
-        subscription: subscriber.subscription.clone(),
         count: self.count,
         hits: 0,
       },
@@ -27,37 +80,16 @@ macro_rules! observable_impl {
     self.source.actual_subscribe(subscriber)
   }
 }
-}
 
-observable_proxy_impl!(TakeOp, S);
-
-impl<'a, S> LocalObservable<'a> for TakeOp<S>
-where
-  S: LocalObservable<'a>,
-{
-  type Unsub = S::Unsub;
-  observable_impl!(LocalSubscription<'a>, 'a);
-}
-
-impl<S> SharedObservable for TakeOp<S>
-where
-  S: SharedObservable,
-{
-  type Unsub = S::Unsub;
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
-}
-
-pub struct TakeObserver<O, S> {
+pub struct TakeObserver<O> {
   observer: O,
-  subscription: S,
   count: u32,
   hits: u32,
 }
 
-impl<O, U, Item, Err> Observer for TakeObserver<O, U>
+impl<O, Item, Err> Observer for TakeObserver<O>
 where
   O: Observer<Item = Item, Err = Err>,
-  U: SubscriptionLike,
 {
   type Item = Item;
   type Err = Err;
@@ -67,7 +99,7 @@ where
       self.observer.next(value);
       if self.hits == self.count {
         self.complete();
-        self.subscription.unsubscribe();
+        println!("{:?}", "called complete");
       }
     }
   }
