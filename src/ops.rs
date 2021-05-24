@@ -33,8 +33,7 @@ use last::LastOp;
 use map::MapOp;
 use scan::ScanOp;
 
-pub type CountOp<Source, Item> =
-  ReduceOp<Source, fn(usize, Item) -> usize, usize>;
+pub type CountOp<Source, Item> = ReduceOp<Source, fn(usize, Item) -> usize, usize>;
 pub type SumOp<Source, Item> = ReduceOp<Source, fn(Item, Item) -> Item, Item>;
 
 // A composition of `scan` followed by `last`
@@ -55,10 +54,7 @@ pub type Accum<Item> = (Item, usize);
 
 /// Realised as chained composition of scan->last->map operators.
 pub type AverageOp<Source, Item> = MapOp<
-  LastOp<
-    ScanOp<Source, fn(Accum<Item>, Item) -> Accum<Item>, Accum<Item>>,
-    Accum<Item>,
-  >,
+  LastOp<ScanOp<Source, fn(Accum<Item>, Item) -> Accum<Item>, Accum<Item>>, Accum<Item>>,
   fn(Accum<Item>) -> Item,
 >;
 

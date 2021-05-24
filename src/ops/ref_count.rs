@@ -11,9 +11,7 @@
 /// Note that using the share operator is exactly the same as using the
 /// publish operator (making the observable hot) and the refCount operator
 /// in a sequence.
-use crate::observable::{
-  LocalConnectableObservable, SharedConnectableObservable,
-};
+use crate::observable::{LocalConnectableObservable, SharedConnectableObservable};
 use crate::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -67,10 +65,8 @@ where
   fn clone(&self) -> Self { InnerSharedRefCount(self.0.clone()) }
 }
 
-pub type SharedRefCount<S, Item, Err> = RefCount<
-  InnerSharedRefCount<S, Item, Err>,
-  SharedConnectableObservable<S, Item, Err>,
->;
+pub type SharedRefCount<S, Item, Err> =
+  RefCount<InnerSharedRefCount<S, Item, Err>, SharedConnectableObservable<S, Item, Err>>;
 
 pub trait RefCountCreator: Sized {
   type Connectable;
@@ -188,9 +184,7 @@ where
   S: TearDownSize,
   C: SubscriptionLike,
 {
-  fn request(&mut self, requested: usize) {
-    self.subscription.request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.subscription.request(requested); }
 
   fn unsubscribe(&mut self) {
     self.subscription.unsubscribe();

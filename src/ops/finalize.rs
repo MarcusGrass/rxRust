@@ -40,10 +40,10 @@ where
       },
       subscription,
     });
-    LocalSubscription::new(FinalizerSubscription{
+    LocalSubscription::new(FinalizerSubscription {
       source: actual,
       func,
-      is_closed: false
+      is_closed: false,
     })
   }
 }
@@ -71,10 +71,10 @@ where
       },
       subscription,
     });
-    SharedSubscription::new(FinalizerSubscription{
+    SharedSubscription::new(FinalizerSubscription {
       source: actual,
       func,
-      is_closed: false
+      is_closed: false,
     })
   }
 }
@@ -90,15 +90,12 @@ struct FinalizerSubscription<F, S> {
   func: F,
 }
 
-impl<Target, S> SubscriptionLike
-  for FinalizerSubscription<Arc<Mutex<Option<Target>>>, S>
+impl<Target, S> SubscriptionLike for FinalizerSubscription<Arc<Mutex<Option<Target>>>, S>
 where
   Target: FnMut(),
   S: SubscriptionLike,
 {
-  fn request(&mut self, requested: usize) {
-    self.source.request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.source.request(requested); }
 
   fn unsubscribe(&mut self) {
     self.is_closed = true;
@@ -111,15 +108,12 @@ where
   fn is_closed(&self) -> bool { self.is_closed }
 }
 
-impl<Target, S> SubscriptionLike
-  for FinalizerSubscription<Rc<RefCell<Option<Target>>>, S>
+impl<Target, S> SubscriptionLike for FinalizerSubscription<Rc<RefCell<Option<Target>>>, S>
 where
   Target: FnMut(),
   S: SubscriptionLike,
 {
-  fn request(&mut self, requested: usize) {
-    self.source.request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.source.request(requested); }
 
   fn unsubscribe(&mut self) {
     self.is_closed = true;
@@ -137,9 +131,7 @@ where
   Target: FnMut(),
   S: SubscriptionLike,
 {
-  fn request(&mut self, requested: usize) {
-    self.source.request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.source.request(requested); }
 
   fn unsubscribe(&mut self) {
     self.is_closed = true;
@@ -152,8 +144,7 @@ where
   fn is_closed(&self) -> bool { self.is_closed }
 }
 
-impl<Item, Err, O, Target> Observer
-  for FinalizerObserver<O, Arc<Mutex<Option<Target>>>>
+impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Arc<Mutex<Option<Target>>>>
 where
   O: Observer<Item = Item, Err = Err>,
   Target: FnMut(),
@@ -181,8 +172,7 @@ where
   fn is_stopped(&self) -> bool { self.observer.is_stopped() }
 }
 
-impl<Item, Err, O, Target> Observer
-  for FinalizerObserver<O, Rc<RefCell<Option<Target>>>>
+impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Rc<RefCell<Option<Target>>>>
 where
   O: Observer<Item = Item, Err = Err>,
   Target: FnMut(),
@@ -210,8 +200,7 @@ where
   fn is_stopped(&self) -> bool { self.observer.is_stopped() }
 }
 
-impl<Item, Err, O, Target> Observer
-  for FinalizerObserver<O, Box<Option<Target>>>
+impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Box<Option<Target>>>
 where
   O: Observer<Item = Item, Err = Err>,
   Target: FnMut(),
@@ -376,7 +365,5 @@ mod test {
 
   benchmark_group!(do_bench, bench_finalize);
 
-  fn bench_finalize(b: &mut bencher::Bencher) {
-    b.iter(finalize_on_complete_simple);
-  }
+  fn bench_finalize(b: &mut bencher::Bencher) { b.iter(finalize_on_complete_simple); }
 }

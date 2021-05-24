@@ -81,20 +81,18 @@ impl LocalScheduler for ManualScheduler {
     task: impl FnMut(usize) + 'static,
     delay: Duration,
     at: Option<Instant>,
-    _take: Option<usize>
+    _take: Option<usize>,
   ) -> SpawnHandle {
     let handle = SpawnHandle::new(AbortHandle::new_pair().0);
-    (*self.repeating_task.write().unwrap()).push(Arc::new(RwLock::new(
-      RepeatingTask {
-        task: Box::new(task),
-        invokes: Arc::new(RwLock::new(0)),
-        delay,
-        last_time: at
-          .map(|t| t.sub(delay))
-          .unwrap_or((*self.clock.read().unwrap()).instant()),
-        cancel: handle.clone(),
-      },
-    )));
+    (*self.repeating_task.write().unwrap()).push(Arc::new(RwLock::new(RepeatingTask {
+      task: Box::new(task),
+      invokes: Arc::new(RwLock::new(0)),
+      delay,
+      last_time: at
+        .map(|t| t.sub(delay))
+        .unwrap_or((*self.clock.read().unwrap()).instant()),
+      cancel: handle.clone(),
+    })));
     handle
   }
 }
@@ -110,9 +108,7 @@ impl ManualScheduler {
 
   pub fn now() -> ManualScheduler { ManualScheduler::new(Instant::now()) }
 
-  pub fn advance(&self, time: Duration) {
-    self.clock.write().unwrap().advance(time);
-  }
+  pub fn advance(&self, time: Duration) { self.clock.write().unwrap().advance(time); }
 
   pub fn advance_and_run(&self, advance_by: Duration, times: usize) {
     for _ in 0..times {
@@ -180,8 +176,7 @@ mod tests {
     let scheduler = ManualScheduler::now();
     let invokes = Arc::new(Mutex::new(0));
     let invokes_c = invokes.clone();
-    let fut =
-      futures::future::lazy(move |_| *invokes_c.clone().lock().unwrap() += 1);
+    let fut = futures::future::lazy(move |_| *invokes_c.clone().lock().unwrap() += 1);
     scheduler.spawn(fut);
     assert_eq!(1, *invokes.lock().unwrap());
   }
@@ -197,8 +192,7 @@ mod tests {
       move |_| *invokes_c.clone().lock().unwrap() += 1,
       delay,
       Some(time.add(Duration::from_millis(5))),
-      None
-      ,
+      None,
     );
     scheduler.run_tasks();
     assert_eq!(0, *invokes.lock().unwrap());

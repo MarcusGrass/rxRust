@@ -2,10 +2,10 @@ use async_std::prelude::FutureExt as AsyncFutureExt;
 use futures::future::{lazy, AbortHandle, FutureExt};
 use std::future::Future;
 
+use crate::prelude::SubscriptionLike;
 use futures::StreamExt;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
-use crate::prelude::SubscriptionLike;
 
 pub fn task_future<T>(
   task: impl FnOnce(T) + 'static,
@@ -39,7 +39,7 @@ pub trait SharedScheduler {
     task: impl FnMut(usize) + Send + 'static,
     time_between: Duration,
     at: Option<Instant>,
-    take: Option<usize>
+    take: Option<usize>,
   ) -> SpawnHandle {
     let (f, handle) = repeating_future(task, time_between, at, take);
     self.spawn(f.map(|_| ()));
@@ -68,7 +68,7 @@ pub trait LocalScheduler {
     task: impl FnMut(usize) + 'static,
     time_between: Duration,
     at: Option<Instant>,
-    take: Option<usize>
+    take: Option<usize>,
   ) -> SpawnHandle {
     let (f, handle) = repeating_future(task, time_between, at, take);
     self.spawn(f.map(|_| ()));
@@ -93,8 +93,7 @@ impl SpawnHandle {
 }
 
 impl SubscriptionLike for SpawnHandle {
-  fn request(&mut self, _: usize) {
-  }
+  fn request(&mut self, _: usize) {}
 
   fn unsubscribe(&mut self) {
     let was_closed = *self.is_closed.read().unwrap();
@@ -150,7 +149,12 @@ fn repeating_future(
       Duration::from_micros(0)
     }
   });
-  let future = to_interval(task, time_between, delay.unwrap_or(time_between), take.unwrap_or(usize::MAX));
+  let future = to_interval(
+    task,
+    time_between,
+    delay.unwrap_or(time_between),
+    take.unwrap_or(usize::MAX),
+  );
   let (fut, handle) = futures::future::abortable(future);
   (fut.map(|_| ()), SpawnHandle::new(handle))
 }
@@ -167,12 +171,12 @@ fn to_interval(
     .then(move |_| {
       task(number);
       async_std::stream::interval(interval_duration)
-          .take(take)
-          .for_each(move |_| {
-        number += 1;
-        task(number);
-        futures::future::ready(())
-      })
+        .take(take)
+        .for_each(move |_| {
+          number += 1;
+          task(number);
+          futures::future::ready(())
+        })
     })
     .delay(delay)
 }

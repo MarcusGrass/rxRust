@@ -65,8 +65,13 @@ impl<Item> PublisherFactory for OfPublisherFactory<Item> {
 }
 
 impl<'a, Item: 'a + Clone> LocalPublisherFactory<'a> for OfPublisherFactory<Item> {
-  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
-      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
+  ) -> LocalSubscription<'a>
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+  {
     LocalSubscription::new(LocalOfPublisher(self.0, subscriber))
   }
 }
@@ -75,50 +80,49 @@ impl<'a, Item: 'a + Clone> LocalPublisherFactory<'a> for OfPublisherFactory<Item
 struct LocalOfPublisher<'a, Item: Clone, O>(Item, Subscriber<O, LocalSubscription<'a>>);
 
 impl<'a, Item: Clone, O> SubscriptionLike for LocalOfPublisher<'a, Item, O>
-  where
-      O: Observer<Item=Item> + 'a
+where
+  O: Observer<Item = Item> + 'a,
 {
   fn request(&mut self, _: usize) {
     self.1.observer.next(self.0.clone());
     self.1.observer.complete();
   }
 
-  fn unsubscribe(&mut self) {
-  }
+  fn unsubscribe(&mut self) {}
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
 impl<Item: Clone + Sync + Send, O> SubscriptionLike for SharedOfPublisher<Item, O>
-  where
-      O: Observer<Item=Item> + Send + Sync + 'static
+where
+  O: Observer<Item = Item> + Send + Sync + 'static,
 {
   fn request(&mut self, _: usize) {
     self.1.observer.next(self.0.clone());
     self.1.observer.complete();
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
 #[derive(Clone)]
 struct SharedOfPublisher<Item, O>(Item, Subscriber<O, SharedSubscription>);
 
-impl<Item: Clone + Sync + Send + 'static> SharedPublisherFactory for OfPublisherFactory<Item> {
-  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
-      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+impl<Item: Clone + Sync + Send + 'static> SharedPublisherFactory
+  for OfPublisherFactory<Item>
+{
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, SharedSubscription>,
+  ) -> SharedSubscription
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+  {
     SharedSubscription::new(SharedOfPublisher(self.0, subscriber))
   }
 }
-
 
 /// Creates an observable that emits value or the error from a [`Result`] given.
 ///
@@ -157,70 +161,82 @@ impl<Item, Err> PublisherFactory for OfResultPublisherFactory<Item, Err> {
   type Err = Err;
 }
 
-impl<'a, Item: Clone + 'a, Err: Clone + 'a> LocalPublisherFactory<'a> for OfResultPublisherFactory<Item, Err> {
-  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
-      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+impl<'a, Item: Clone + 'a, Err: Clone + 'a> LocalPublisherFactory<'a>
+  for OfResultPublisherFactory<Item, Err>
+{
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
+  ) -> LocalSubscription<'a>
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+  {
     LocalSubscription::new(LocalOfResultPublisher(self.0, subscriber))
   }
 }
 
 #[derive(Clone)]
-struct LocalOfResultPublisher<'a, Item, Err, O>(Result<Item, Err>, Subscriber<O, LocalSubscription<'a>>);
+struct LocalOfResultPublisher<'a, Item, Err, O>(
+  Result<Item, Err>,
+  Subscriber<O, LocalSubscription<'a>>,
+);
 
-impl<'a, Item: Clone, Err: Clone, O> SubscriptionLike for LocalOfResultPublisher<'a, Item, Err,O>
-  where
-      O: Observer<Item=Item, Err=Err> + 'a
+impl<'a, Item: Clone, Err: Clone, O> SubscriptionLike
+  for LocalOfResultPublisher<'a, Item, Err, O>
+where
+  O: Observer<Item = Item, Err = Err> + 'a,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
       Ok(v) => {
         self.1.observer.next(v);
         self.1.observer.complete();
-      },
-      Err(e) => self.1.observer.error(e)
+      }
+      Err(e) => self.1.observer.error(e),
     }
-
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
-impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static, O> SubscriptionLike for SharedOfResultPublisher<Item, Err, O>
-  where
-      O: Observer<Item=Item, Err=Err> + Send + Sync + 'static
+impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static, O>
+  SubscriptionLike for SharedOfResultPublisher<Item, Err, O>
+where
+  O: Observer<Item = Item, Err = Err> + Send + Sync + 'static,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
       Ok(v) => {
         self.1.observer.next(v);
         self.1.observer.complete();
-      },
-      Err(e) => self.1.observer.error(e)
+      }
+      Err(e) => self.1.observer.error(e),
     }
-
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
 #[derive(Clone)]
-struct SharedOfResultPublisher<Item, Err, O>(Result<Item, Err>, Subscriber<O, SharedSubscription>);
+struct SharedOfResultPublisher<Item, Err, O>(
+  Result<Item, Err>,
+  Subscriber<O, SharedSubscription>,
+);
 
-impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static> SharedPublisherFactory for OfResultPublisherFactory<Item, Err> {
-  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
-      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static>
+  SharedPublisherFactory for OfResultPublisherFactory<Item, Err>
+{
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, SharedSubscription>,
+  ) -> SharedSubscription
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+  {
     SharedSubscription::new(SharedOfResultPublisher(self.0, subscriber))
   }
 }
@@ -242,7 +258,9 @@ impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static> Sh
 /// observable::of_option(Some(1234))
 ///   .subscribe(|v| {println!("{},", v)});
 /// ```
-pub fn of_option<Item>(o: Option<Item>) -> ObservableBase<OfOptionPublisherFactory<Item>> {
+pub fn of_option<Item>(
+  o: Option<Item>,
+) -> ObservableBase<OfOptionPublisherFactory<Item>> {
   ObservableBase::new(OfOptionPublisherFactory(o))
 }
 #[derive(Clone)]
@@ -254,18 +272,26 @@ impl<Item> PublisherFactory for OfOptionPublisherFactory<Item> {
 }
 
 impl<'a, Item: Clone + 'a> LocalPublisherFactory<'a> for OfOptionPublisherFactory<Item> {
-  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
-      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
+  ) -> LocalSubscription<'a>
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+  {
     LocalSubscription::new(LocalOfOptionPublisher(self.0, subscriber))
   }
 }
 
 #[derive(Clone)]
-struct LocalOfOptionPublisher<'a, Item, O>(Option<Item>, Subscriber<O, LocalSubscription<'a>>);
+struct LocalOfOptionPublisher<'a, Item, O>(
+  Option<Item>,
+  Subscriber<O, LocalSubscription<'a>>,
+);
 
 impl<'a, Item: Clone, O> SubscriptionLike for LocalOfOptionPublisher<'a, Item, O>
-  where
-      O: Observer<Item=Item> + 'a
+where
+  O: Observer<Item = Item> + 'a,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
@@ -275,18 +301,15 @@ impl<'a, Item: Clone, O> SubscriptionLike for LocalOfOptionPublisher<'a, Item, O
     self.1.observer.complete();
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
-impl<Item: Clone + Send + Sync + 'static, O> SubscriptionLike for SharedOfOptionPublisher<Item, O>
-  where
-      O: Observer<Item=Item> + Send + Sync + 'static
+impl<Item: Clone + Send + Sync + 'static, O> SubscriptionLike
+  for SharedOfOptionPublisher<Item, O>
+where
+  O: Observer<Item = Item> + Send + Sync + 'static,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
@@ -296,21 +319,24 @@ impl<Item: Clone + Send + Sync + 'static, O> SubscriptionLike for SharedOfOption
     self.1.observer.complete();
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
 #[derive(Clone)]
 struct SharedOfOptionPublisher<Item, O>(Option<Item>, Subscriber<O, SharedSubscription>);
 
-impl<Item: Clone + Send + Sync + 'static> SharedPublisherFactory for OfOptionPublisherFactory<Item> {
-  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
-      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+impl<Item: Clone + Send + Sync + 'static> SharedPublisherFactory
+  for OfOptionPublisherFactory<Item>
+{
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, SharedSubscription>,
+  ) -> SharedSubscription
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+  {
     SharedSubscription::new(SharedOfOptionPublisher(self.0, subscriber))
   }
 }
@@ -331,8 +357,7 @@ impl<Item: Clone + Send + Sync + 'static> SharedPublisherFactory for OfOptionPub
 /// observable::of_fn(|| {1234})
 ///   .subscribe(|v| {println!("{},", v)});
 /// ```
-pub fn of_fn<F, Item>(f: F) -> ObservableBase<OfFnPublisherFactory<F, Item>>
-{
+pub fn of_fn<F, Item>(f: F) -> ObservableBase<OfFnPublisherFactory<F, Item>> {
   ObservableBase::new(OfFnPublisherFactory(f, TypeHint::new()))
 }
 
@@ -344,68 +369,79 @@ impl<F, Item> PublisherFactory for OfFnPublisherFactory<F, Item> {
   type Err = ();
 }
 
-impl<'a, F: 'a, Item: 'a> LocalPublisherFactory<'a> for OfFnPublisherFactory<F, Item> where
-    F: Fn() -> Item
+impl<'a, F: 'a, Item: 'a> LocalPublisherFactory<'a> for OfFnPublisherFactory<F, Item>
+where
+  F: Fn() -> Item,
 {
-  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
-      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
+  ) -> LocalSubscription<'a>
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+  {
     LocalSubscription::new(LocalOfFnPublisher(self.0, subscriber, TypeHint::new()))
   }
 }
 
 #[derive(Clone)]
-struct LocalOfFnPublisher<'a, F, Item, O>(F, Subscriber<O, LocalSubscription<'a>>, TypeHint<Item>);
+struct LocalOfFnPublisher<'a, F, Item, O>(
+  F,
+  Subscriber<O, LocalSubscription<'a>>,
+  TypeHint<Item>,
+);
 
 impl<'a, F, Item, O> SubscriptionLike for LocalOfFnPublisher<'a, F, Item, O>
-  where
-      O: Observer<Item=Item> + 'a,
-      F: Fn() -> Item
+where
+  O: Observer<Item = Item> + 'a,
+  F: Fn() -> Item,
 {
   fn request(&mut self, _: usize) {
     self.1.observer.next((self.0)());
     self.1.observer.complete();
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
 impl<F, Item, O> SubscriptionLike for SharedOfFnPublisher<F, Item, O>
-  where
-      O: Observer<Item=Item> + Send + Sync + 'static,
-      F: Fn() -> Item
+where
+  O: Observer<Item = Item> + Send + Sync + 'static,
+  F: Fn() -> Item,
 {
   fn request(&mut self, _: usize) {
     self.1.observer.next((self.0)());
     self.1.observer.complete();
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
 #[derive(Clone)]
-struct SharedOfFnPublisher<F, Item, O>(F, Subscriber<O, SharedSubscription>, TypeHint<Item>);
+struct SharedOfFnPublisher<F, Item, O>(
+  F,
+  Subscriber<O, SharedSubscription>,
+  TypeHint<Item>,
+);
 
-impl<F, Item: 'static> SharedPublisherFactory for OfFnPublisherFactory<F, Item> where
-    F: Fn() -> Item + Send + Sync + 'static
+impl<F, Item: 'static> SharedPublisherFactory for OfFnPublisherFactory<F, Item>
+where
+  F: Fn() -> Item + Send + Sync + 'static,
 {
-  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
-      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, SharedSubscription>,
+  ) -> SharedSubscription
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+  {
     SharedSubscription::new(SharedOfFnPublisher(self.0, subscriber, TypeHint::new()))
   }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -473,8 +509,7 @@ mod test {
     let mut value2 = 0;
     let mut error_reported = false;
     let r: Result<i32, &str> = Err("error");
-    observable::of_result(r)
-      .subscribe_err(|_| value2 = 123, |_| error_reported = true);
+    observable::of_result(r).subscribe_err(|_| value2 = 123, |_| error_reported = true);
 
     assert_eq!(value2, 0);
     assert!(error_reported);

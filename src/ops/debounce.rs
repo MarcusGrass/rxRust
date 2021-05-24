@@ -24,9 +24,7 @@ where
 {
   type Unsub = Unsub;
 
-  fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
-  >(
+  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
     subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {
@@ -37,15 +35,13 @@ where
     } = self;
 
     source.actual_subscribe(Subscriber {
-      observer: LocalDebounceObserver(Rc::new(RefCell::new(
-        DebounceObserver {
-          observer: subscriber.observer,
-          delay: duration,
-          scheduler,
-          trailing_value: None,
-          last_updated: None,
-        },
-      ))),
+      observer: LocalDebounceObserver(Rc::new(RefCell::new(DebounceObserver {
+        observer: subscriber.observer,
+        delay: duration,
+        scheduler,
+        trailing_value: None,
+        last_updated: None,
+      }))),
       subscription: subscriber.subscription,
     })
   }
@@ -73,15 +69,13 @@ where
       subscription,
     } = subscriber;
     source.actual_subscribe(Subscriber {
-      observer: SharedDebounceObserver(Arc::new(Mutex::new(
-        DebounceObserver {
-          observer,
-          scheduler,
-          trailing_value: None,
-          delay: duration,
-          last_updated: None,
-        },
-      ))),
+      observer: SharedDebounceObserver(Arc::new(Mutex::new(DebounceObserver {
+        observer,
+        scheduler,
+        trailing_value: None,
+        delay: duration,
+        last_updated: None,
+      }))),
       subscription,
     })
   }
@@ -95,13 +89,9 @@ struct DebounceObserver<O, S, Item> {
   last_updated: Option<Instant>,
 }
 
-struct SharedDebounceObserver<O, S, Item>(
-  Arc<Mutex<DebounceObserver<O, S, Item>>>,
-);
+struct SharedDebounceObserver<O, S, Item>(Arc<Mutex<DebounceObserver<O, S, Item>>>);
 
-struct LocalDebounceObserver<O, S, Item>(
-  Rc<RefCell<DebounceObserver<O, S, Item>>>,
-);
+struct LocalDebounceObserver<O, S, Item>(Rc<RefCell<DebounceObserver<O, S, Item>>>);
 
 impl<O, S> Observer for SharedDebounceObserver<O, S, O::Item>
 where
@@ -204,8 +194,7 @@ mod tests {
     let x = Rc::new(RefCell::new(vec![]));
     let x_c = x.clone();
     let mut pool = LocalPool::new();
-    let interval =
-      observable::interval(Duration::from_millis(2), pool.spawner());
+    let interval = observable::interval(Duration::from_millis(2), pool.spawner());
     let spawner = pool.spawner();
     let debounce_subscribe = || {
       let x = x.clone();
@@ -226,8 +215,7 @@ mod tests {
     let x = Rc::new(RefCell::new(vec![]));
     let x_c = x.clone();
     let mut pool = LocalPool::new();
-    let interval =
-      observable::interval(Duration::from_millis(3), pool.spawner());
+    let interval = observable::interval(Duration::from_millis(3), pool.spawner());
     let spawner = pool.spawner();
     let debounce_subscribe = || {
       let x = x.clone();

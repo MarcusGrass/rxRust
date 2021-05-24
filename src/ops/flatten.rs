@@ -111,8 +111,7 @@ pub struct FlattenInnerObserver<O, S, St> {
   state: St,
 }
 
-impl<O, S, Item, Err> Observer
-  for FlattenInnerObserver<O, S, Arc<Mutex<FlattenState>>>
+impl<O, S, Item, Err> Observer for FlattenInnerObserver<O, S, Arc<Mutex<FlattenState>>>
 where
   O: Observer<Item = Item, Err = Err>,
   S: SubscriptionLike,
@@ -158,8 +157,7 @@ where
   }
 }
 
-impl<O, S, Item, Err> Observer
-  for FlattenInnerObserver<O, S, Rc<RefCell<FlattenState>>>
+impl<O, S, Item, Err> Observer for FlattenInnerObserver<O, S, Rc<RefCell<FlattenState>>>
 where
   O: Observer<Item = Item, Err = Err>,
   S: SubscriptionLike,
@@ -340,7 +338,7 @@ type LocalInnerObserver<'a, O> =
 #[derive(Clone)]
 /// This is an `Observer` for `Observable` values that get emitted by an
 /// `Observable` that works on a local environment.
-pub struct FlattenLocalOuterObserver<'a,Inner, O> {
+pub struct FlattenLocalOuterObserver<'a, Inner, O> {
   marker: std::marker::PhantomData<Inner>,
   inner_observer: Rc<RefCell<LocalInnerObserver<'a, O>>>,
   subscription: LocalSubscription<'a>,
@@ -361,9 +359,7 @@ where
     drop(state);
     let mut sub = value.actual_subscribe(Subscriber::local(self.inner_observer.clone()));
     sub.request(usize::MAX); // TODO: Propagate requested from inner
-    self.subscription.add(
-      sub
-    );
+    self.subscription.add(sub);
   }
 
   error_proxy_impl!(Err, inner_observer);
@@ -373,12 +369,10 @@ where
   is_stopped_proxy_impl!(inner_observer);
 }
 
-impl<'a, Outer, Inner, Item, Err> LocalObservable<'a>
-  for FlattenOp<Outer, Inner>
+impl<'a, Outer, Inner, Item, Err> LocalObservable<'a> for FlattenOp<Outer, Inner>
 where
   Outer: LocalObservable<'a, Item = Inner, Err = Err>,
-  Inner:
-    LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription<'a>> + 'a,
+  Inner: LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription<'a>> + 'a,
 {
   type Unsub = LocalSubscription<'a>;
 

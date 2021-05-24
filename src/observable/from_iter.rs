@@ -28,10 +28,9 @@ use std::iter::{Repeat, Take};
 /// observable::from_iter(vec![0,1,2,3])
 ///   .subscribe(|v| {println!("{},", v)});
 /// ```
-///
 pub fn from_iter<Iter, Item>(iter: Iter) -> ObservableBase<IterPublisherFactory<Iter>>
-  where
-      Iter: IntoIterator<Item = Item>,
+where
+  Iter: IntoIterator<Item = Item>,
 {
   ObservableBase::new(IterPublisherFactory(iter))
 }
@@ -54,42 +53,60 @@ pub struct SharedIterPublisher<Iter, O> {
 pub struct IterPublisherFactory<Iter>(Iter);
 
 impl<Iter> PublisherFactory for IterPublisherFactory<Iter>
-  where
-      Iter: IntoIterator,
+where
+  Iter: IntoIterator,
 {
   type Item = Iter::Item;
   type Err = ();
 }
 
 impl<'a, Iter> LocalPublisherFactory<'a> for IterPublisherFactory<Iter>
-  where
-      Iter: IntoIterator + Clone + 'a,
+where
+  Iter: IntoIterator + Clone + 'a,
 {
-  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription where
-      O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
-    let publisher = LocalIterPublisher {it: self.0, sub: subscriber, cursor: 0};
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, LocalSubscription<'a>>,
+  ) -> LocalSubscription
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+  {
+    let publisher = LocalIterPublisher {
+      it: self.0,
+      sub: subscriber,
+      cursor: 0,
+    };
     LocalSubscription::new(publisher)
   }
 }
 
 impl<Iter> SharedPublisherFactory for IterPublisherFactory<Iter>
-  where
-      Iter: IntoIterator + Send + Sync + Clone + 'static,
+where
+  Iter: IntoIterator + Send + Sync + Clone + 'static,
 {
-  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
-      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
-    let publisher = SharedIterPublisher {it: self.0, sub: subscriber, cursor: 0};
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, SharedSubscription>,
+  ) -> SharedSubscription
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+  {
+    let publisher = SharedIterPublisher {
+      it: self.0,
+      sub: subscriber,
+      cursor: 0,
+    };
     SharedSubscription::new(publisher)
   }
 }
 
 impl<Iter, O> SubscriptionLike for SharedIterPublisher<Iter, O>
-  where Iter: IntoIterator + Clone + 'static,
-        O: Observer<Item=Iter::Item> + 'static
+where
+  Iter: IntoIterator + Clone + 'static,
+  O: Observer<Item = Iter::Item> + 'static,
 {
   fn request(&mut self, requested: usize) {
-    let mut it = self.it.clone().into_iter()
-        .skip(self.cursor as usize);
+    let mut it = self.it.clone().into_iter().skip(self.cursor as usize);
     let mut provided = 0;
     let mut v: Option<O::Item>;
     loop {
@@ -108,21 +125,17 @@ impl<Iter, O> SubscriptionLike for SharedIterPublisher<Iter, O>
     self.cursor += provided;
   }
 
-  fn unsubscribe(&mut self) {
-    todo!()
-  }
+  fn unsubscribe(&mut self) { todo!() }
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 impl<'a, Iter, O> SubscriptionLike for LocalIterPublisher<'a, Iter, O>
-  where Iter: IntoIterator + Clone + 'a,
-        O: Observer<Item=Iter::Item> + 'a
+where
+  Iter: IntoIterator + Clone + 'a,
+  O: Observer<Item = Iter::Item> + 'a,
 {
   fn request(&mut self, requested: usize) {
-    let mut it = self.it.clone().into_iter()
-        .skip(self.cursor as usize);
+    let mut it = self.it.clone().into_iter().skip(self.cursor as usize);
     let mut provided = 0;
     let mut v: Option<O::Item>;
     loop {
@@ -141,12 +154,9 @@ impl<'a, Iter, O> SubscriptionLike for LocalIterPublisher<'a, Iter, O>
     self.cursor += provided;
   }
 
-  fn unsubscribe(&mut self) {
-  }
+  fn unsubscribe(&mut self) {}
 
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+  fn is_closed(&self) -> bool { todo!() }
 }
 
 /// Creates an observable producing same value repeated N times.

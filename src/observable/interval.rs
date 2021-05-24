@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-use std::time::{Duration, Instant};
 use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
 /// Creates an observable which will fire at `dur` time into the future,
 /// and will repeat every `dur` interval after.
@@ -43,33 +43,43 @@ impl<S> PublisherFactory for IntervalPublisherFactory<S> {
 }
 
 impl<S> LocalPublisherFactory<'static> for IntervalPublisherFactory<S>
-where S: LocalScheduler + 'static
+where
+  S: LocalScheduler + 'static,
 {
-  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'static>>) -> LocalSubscription<'static> where
-      O: Observer<Item=Self::Item, Err=Self::Err> + 'static
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, LocalSubscription<'static>>,
+  ) -> LocalSubscription<'static>
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
   {
     LocalSubscription::new(LocalIntervalPublisher {
       scheduler: self.scheduler,
       observer: Arc::new(RwLock::new(subscriber.observer)),
       abort: None,
       at: self.at,
-      dur: self.dur
+      dur: self.dur,
     })
   }
 }
 
 impl<S> SharedPublisherFactory for IntervalPublisherFactory<S>
-where S: SharedScheduler + Send + Sync + 'static
+where
+  S: SharedScheduler + Send + Sync + 'static,
 {
-  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
-      O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static
+  fn subscribe<O>(
+    self,
+    subscriber: Subscriber<O, SharedSubscription>,
+  ) -> SharedSubscription
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
   {
     SharedSubscription::new(SharedIntervalPublisher {
       scheduler: self.scheduler,
       observer: Arc::new(RwLock::new(subscriber.observer)),
       abort: None,
       at: self.at,
-      dur: self.dur
+      dur: self.dur,
     })
   }
 }
@@ -83,9 +93,10 @@ struct LocalIntervalPublisher<S, O> {
   dur: Duration,
 }
 
-
 impl<S, O> SubscriptionLike for LocalIntervalPublisher<S, O>
-where S: LocalScheduler, O: Observer<Item=u128> + 'static,
+where
+  S: LocalScheduler,
+  O: Observer<Item = u128> + 'static,
 {
   fn request(&mut self, requested: usize) {
     let o_c = self.observer.clone();
@@ -95,7 +106,7 @@ where S: LocalScheduler, O: Observer<Item=u128> + 'static,
       },
       self.dur,
       self.at,
-      Some(requested as usize)
+      Some(requested as usize),
     );
     if self.abort.is_some() {
       self.abort.clone().unwrap().unsubscribe();
@@ -111,7 +122,7 @@ where S: LocalScheduler, O: Observer<Item=u128> + 'static,
 
   fn is_closed(&self) -> bool {
     if self.abort.is_some() {
-       return self.abort.clone().unwrap().is_closed()
+      return self.abort.clone().unwrap().is_closed();
     }
     true // TODO: true if not started
   }
@@ -126,7 +137,9 @@ struct SharedIntervalPublisher<S, O> {
 }
 
 impl<S, O> SubscriptionLike for SharedIntervalPublisher<S, O>
-  where S: SharedScheduler, O: Observer<Item=u128> + Send + Sync + 'static,
+where
+  S: SharedScheduler,
+  O: Observer<Item = u128> + Send + Sync + 'static,
 {
   fn request(&mut self, requested: usize) {
     let o_c = self.observer.clone();
@@ -136,14 +149,13 @@ impl<S, O> SubscriptionLike for SharedIntervalPublisher<S, O>
       },
       self.dur,
       self.at,
-      Some(requested as usize)
+      Some(requested as usize),
     );
     if self.abort.is_some() {
       self.abort.clone().unwrap().unsubscribe();
     }
     self.abort = Some(h);
   }
-
 
   fn unsubscribe(&mut self) {
     if self.abort.is_some() {
@@ -153,7 +165,7 @@ impl<S, O> SubscriptionLike for SharedIntervalPublisher<S, O>
 
   fn is_closed(&self) -> bool {
     if self.abort.is_some() {
-      return self.abort.clone().unwrap().is_closed()
+      return self.abort.clone().unwrap().is_closed();
     }
     true // TODO: true if not started
   }

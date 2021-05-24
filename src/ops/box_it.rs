@@ -49,8 +49,11 @@ where
   type Err = T::Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Subscriber<Box<dyn Observer<Item=Self::Item,Err=Self::Err> + 'a>, LocalSubscription<'a>, >,
-  ) -> Box<dyn SubscriptionLike + 'a>  {
+    subscriber: Subscriber<
+      Box<dyn Observer<Item = Self::Item, Err = Self::Err> + 'a>,
+      LocalSubscription<'a>,
+    >,
+  ) -> Box<dyn SubscriptionLike + 'a> {
     Box::new(self.actual_subscribe(subscriber))
   }
 }
@@ -143,8 +146,7 @@ pub trait IntoBox<T> {
     Self: Sized;
 }
 
-impl<'a, T> IntoBox<T>
-  for Box<dyn BoxObservable<'a, Item = T::Item, Err = T::Err> + 'a>
+impl<'a, T> IntoBox<T> for Box<dyn BoxObservable<'a, Item = T::Item, Err = T::Err> + 'a>
 where
   T: LocalObservable<'a> + 'a,
 {
@@ -164,31 +166,24 @@ where
 
 // support box observable clone
 pub trait BoxClone<'a>: BoxObservable<'a> {
-  fn box_clone(
-    &self,
-  ) -> Box<dyn BoxClone<'a, Item = Self::Item, Err = Self::Err> + 'a>;
+  fn box_clone(&self) -> Box<dyn BoxClone<'a, Item = Self::Item, Err = Self::Err> + 'a>;
 }
 
 impl<'a, T> BoxClone<'a> for T
 where
   T: BoxObservable<'a> + Clone + 'a,
 {
-  fn box_clone(
-    &self,
-  ) -> Box<dyn BoxClone<'a, Item = Self::Item, Err = Self::Err> + 'a> {
+  fn box_clone(&self) -> Box<dyn BoxClone<'a, Item = Self::Item, Err = Self::Err> + 'a> {
     Box::new(self.clone())
   }
 }
 
-impl<'a, Item, Err> Clone
-  for Box<dyn BoxClone<'a, Item = Item, Err = Err> + 'a>
-{
+impl<'a, Item, Err> Clone for Box<dyn BoxClone<'a, Item = Item, Err = Err> + 'a> {
   #[inline]
   fn clone(&self) -> Self { self.box_clone() }
 }
 
-impl<'a, T> IntoBox<T>
-  for Box<dyn BoxClone<'a, Item = T::Item, Err = T::Err> + 'a>
+impl<'a, T> IntoBox<T> for Box<dyn BoxClone<'a, Item = T::Item, Err = T::Err> + 'a>
 where
   T: LocalObservable<'a> + Clone + 'a,
 {
@@ -196,18 +191,14 @@ where
 }
 
 pub trait SharedBoxClone: SharedBoxObservable {
-  fn box_clone(
-    &self,
-  ) -> Box<dyn SharedBoxClone<Item = Self::Item, Err = Self::Err>>;
+  fn box_clone(&self) -> Box<dyn SharedBoxClone<Item = Self::Item, Err = Self::Err>>;
 }
 
 impl<T> SharedBoxClone for T
 where
   T: SharedBoxObservable + Clone + 'static,
 {
-  fn box_clone(
-    &self,
-  ) -> Box<dyn SharedBoxClone<Item = Self::Item, Err = Self::Err>> {
+  fn box_clone(&self) -> Box<dyn SharedBoxClone<Item = Self::Item, Err = Self::Err>> {
     Box::new(self.clone())
   }
 }

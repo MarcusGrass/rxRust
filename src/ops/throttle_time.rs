@@ -32,9 +32,7 @@ where
 {
   type Unsub = Unsub;
 
-  fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
-  >(
+  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
     subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {
@@ -46,17 +44,15 @@ where
     } = self;
 
     source.actual_subscribe(Subscriber {
-      observer: LocalThrottleObserver(Rc::new(RefCell::new(
-        ThrottleObserver {
-          observer: subscriber.observer,
-          edge,
-          delay: duration,
-          trailing_value: None,
-          throttled: None,
-          subscription: subscriber.subscription.clone(),
-          scheduler,
-        },
-      ))),
+      observer: LocalThrottleObserver(Rc::new(RefCell::new(ThrottleObserver {
+        observer: subscriber.observer,
+        edge,
+        delay: duration,
+        trailing_value: None,
+        throttled: None,
+        subscription: subscriber.subscription.clone(),
+        scheduler,
+      }))),
       subscription: subscriber.subscription,
     })
   }
@@ -86,17 +82,15 @@ where
       subscription,
     } = subscriber;
     source.actual_subscribe(Subscriber {
-      observer: SharedThrottleObserver(Arc::new(Mutex::new(
-        ThrottleObserver {
-          observer,
-          edge,
-          delay: duration,
-          trailing_value: None,
-          throttled: None,
-          subscription: subscription.clone(),
-          scheduler,
-        },
-      ))),
+      observer: SharedThrottleObserver(Arc::new(Mutex::new(ThrottleObserver {
+        observer,
+        edge,
+        delay: duration,
+        trailing_value: None,
+        throttled: None,
+        subscription: subscription.clone(),
+        scheduler,
+      }))),
       subscription,
     })
   }
@@ -245,8 +239,7 @@ mod tests {
     let x_c = x.clone();
     let scheduler = ManualScheduler::now();
 
-    let interval =
-      observable::interval(Duration::from_millis(5), scheduler.clone());
+    let interval = observable::interval(Duration::from_millis(5), scheduler.clone());
     let throttle_subscribe = |edge| {
       let x = x.clone();
       interval

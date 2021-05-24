@@ -47,8 +47,7 @@ where
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
-impl<S, Item, Err> SharedObservable
-  for SharedConnectableObservable<S, Item, Err>
+impl<S, Item, Err> SharedObservable for SharedConnectableObservable<S, Item, Err>
 where
   S: SharedObservable<Item = Item, Err = Err>,
   S: SharedObservable<Item = Item, Err = Err>,

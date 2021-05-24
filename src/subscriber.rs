@@ -61,9 +61,7 @@ where
 }
 
 impl<O, U: SubscriptionLike> SubscriptionLike for Subscriber<O, U> {
-  fn request(&mut self, requested: usize) {
-    self.subscription.request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.subscription.request(requested); }
 
   #[inline]
   fn unsubscribe(&mut self) { self.subscription.unsubscribe() }
@@ -102,10 +100,8 @@ mod test {
     assert_eq!(*error.lock().unwrap(), 1);
   }
 
-  type SubscriberInfo<O> =
-    (Arc<Mutex<i32>>, Arc<Mutex<i32>>, Arc<Mutex<i32>>, O);
-  fn shared_subscriber_creator()
-  -> SubscriberInfo<impl Observer<Item = i32, Err = ()>> {
+  type SubscriberInfo<O> = (Arc<Mutex<i32>>, Arc<Mutex<i32>>, Arc<Mutex<i32>>, O);
+  fn shared_subscriber_creator() -> SubscriberInfo<impl Observer<Item = i32, Err = ()>> {
     let next = Arc::new(Mutex::new(0));
     let err = Arc::new(Mutex::new(0));
     let complete = Arc::new(Mutex::new(0));

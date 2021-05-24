@@ -40,11 +40,11 @@ where
       None,
       (),
     );
-    SharedSubscription::new(OnSubSubscription{
+    SharedSubscription::new(OnSubSubscription {
       sub: subscription,
       handle,
       req,
-      started: false
+      started: false,
     })
   }
 }
@@ -57,7 +57,10 @@ pub struct OnSubSubscription<S> {
   started: bool,
 }
 
-impl<S> SubscriptionLike for OnSubSubscription<S> where S: SubscriptionLike {
+impl<S> SubscriptionLike for OnSubSubscription<S>
+where
+  S: SubscriptionLike,
+{
   fn request(&mut self, requested: usize) {
     if !self.started {
       *self.req.write().unwrap() += requested;
@@ -67,13 +70,9 @@ impl<S> SubscriptionLike for OnSubSubscription<S> where S: SubscriptionLike {
     }
   }
 
-  fn unsubscribe(&mut self) {
-    self.handle.unsubscribe();
-  }
+  fn unsubscribe(&mut self) { self.handle.unsubscribe(); }
 
-  fn is_closed(&self) -> bool {
-    self.handle.is_closed()
-  }
+  fn is_closed(&self) -> bool { self.handle.is_closed() }
 }
 
 impl<S, SD> LocalObservable<'static> for SubscribeOnOP<S, SD>
@@ -82,9 +81,7 @@ where
   SD: LocalScheduler,
 {
   type Unsub = LocalSubscription<'static>;
-  fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
-  >(
+  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
     subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {

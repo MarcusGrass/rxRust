@@ -48,8 +48,7 @@ pub trait SubscribeErr<'a, N, E> {
   ///
   /// * `error`: A handler for a terminal event resulting from an error.
   /// completion.
-  fn subscribe_err(self, next: N, error: E)
-  -> SubscriptionWrapper<Self::Unsub>;
+  fn subscribe_err(self, next: N, error: E) -> SubscriptionWrapper<Self::Unsub>;
 }
 
 impl<'a, S, N, E> SubscribeErr<'a, N, E> for S
@@ -61,11 +60,7 @@ where
   S::Item: 'a,
 {
   type Unsub = S::Unsub;
-  fn subscribe_err(
-    self,
-    next: N,
-    error: E,
-  ) -> SubscriptionWrapper<Self::Unsub> {
+  fn subscribe_err(self, next: N, error: E) -> SubscriptionWrapper<Self::Unsub> {
     let mut unsub = self.actual_subscribe(Subscriber::local(ObserverErr {
       next,
       error,

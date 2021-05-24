@@ -39,22 +39,26 @@ where
       completed_one: false,
     }));
 
-    LocalSubscription::new(MergeSubscription(self.source1.actual_subscribe(
-      Subscriber {
-      observer: merge_observer.clone(),
-      subscription: LocalSubscription::default(),
-    }), self.source2.actual_subscribe(
-      Subscriber {
+    LocalSubscription::new(MergeSubscription(
+      self.source1.actual_subscribe(Subscriber {
+        observer: merge_observer.clone(),
+        subscription: LocalSubscription::default(),
+      }),
+      self.source2.actual_subscribe(Subscriber {
         observer: merge_observer,
         subscription: LocalSubscription::default(),
-      }
-    )))
+      }),
+    ))
   }
 }
 
 #[derive(Clone)]
 pub struct MergeSubscription<S1, S2>(S1, S2);
-impl<S1, S2> SubscriptionLike for MergeSubscription<S1, S2> where S1: SubscriptionLike, S2: SubscriptionLike {
+impl<S1, S2> SubscriptionLike for MergeSubscription<S1, S2>
+where
+  S1: SubscriptionLike,
+  S2: SubscriptionLike,
+{
   fn request(&mut self, requested: usize) {
     self.0.request(requested);
     self.1.request(requested);
@@ -65,9 +69,7 @@ impl<S1, S2> SubscriptionLike for MergeSubscription<S1, S2> where S1: Subscripti
     self.1.unsubscribe();
   }
 
-  fn is_closed(&self) -> bool {
-    self.0.is_closed() && self.1.is_closed()
-  }
+  fn is_closed(&self) -> bool { self.0.is_closed() && self.1.is_closed() }
 }
 
 impl<S1, S2> SharedObservable for MergeOp<S1, S2>
@@ -89,16 +91,16 @@ where
       subscription: subscription.clone(),
       completed_one: false,
     }));
-    SharedSubscription::new(MergeSubscription(self.source1.actual_subscribe(
-      Subscriber {
+    SharedSubscription::new(MergeSubscription(
+      self.source1.actual_subscribe(Subscriber {
         observer: merge_observer.clone(),
         subscription: SharedSubscription::default(),
-      }), self.source2.actual_subscribe(
-      Subscriber {
+      }),
+      self.source2.actual_subscribe(Subscriber {
         observer: merge_observer,
         subscription: SharedSubscription::default(),
-      }
-    )))
+      }),
+    ))
   }
 }
 

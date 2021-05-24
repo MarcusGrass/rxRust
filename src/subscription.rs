@@ -32,7 +32,7 @@ impl Debug for Box<dyn SubscriptionLike> {
 pub struct LocalSubscription<'a>(Rc<RefCell<Inner<Box<dyn SubscriptionLike + 'a>>>>);
 
 impl<'a> LocalSubscription<'a> {
-  pub fn new <S: SubscriptionLike + 'a>(sub: S) -> Self {
+  pub fn new<S: SubscriptionLike + 'a>(sub: S) -> Self {
     let subscription = LocalSubscription::default();
     subscription.add(sub);
     subscription
@@ -43,7 +43,6 @@ impl<'a> LocalSubscription<'a> {
   pub fn proxy<S: SubscriptionLike + 'a>(sub: S) -> Self {
     Self::new(SubscriptionProxy(sub))
   }
-
 }
 
 impl<'a> TearDownSize for LocalSubscription<'a> {
@@ -56,21 +55,16 @@ pub trait TearDownSize: SubscriptionLike {
 
 impl<'a> SubscriptionLike for LocalSubscription<'a> {
   #[inline]
-  fn request(&mut self, requested: usize) {
-    self.0.request(requested)
-  }
+  fn request(&mut self, requested: usize) { self.0.request(requested) }
 
   #[inline]
   fn unsubscribe(&mut self) { self.0.unsubscribe() }
   #[inline]
   fn is_closed(&self) -> bool { self.0.is_closed() }
-
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct SharedSubscription(
-  Arc<Mutex<Inner<Box<dyn SubscriptionLike + Send + Sync>>>>,
-);
+pub struct SharedSubscription(Arc<Mutex<Inner<Box<dyn SubscriptionLike + Send + Sync>>>>);
 
 impl SharedSubscription {
   pub fn new<S: SubscriptionLike + Send + Sync + 'static>(sub: S) -> Self {
@@ -83,10 +77,7 @@ impl SharedSubscription {
     Self::new(SubscriptionProxy(sub))
   }
 
-  pub fn add<S: SubscriptionLike + Send + Sync + 'static>(
-    &self,
-    subscription: S,
-  ) {
+  pub fn add<S: SubscriptionLike + Send + Sync + 'static>(&self, subscription: S) {
     if !self.is_same(&subscription) {
       self.0.lock().unwrap().add(Box::new(subscription));
     }
@@ -107,9 +98,7 @@ impl TearDownSize for SharedSubscription {
 
 impl SubscriptionLike for SharedSubscription {
   #[inline]
-  fn request(&mut self, requested: usize) {
-    self.0.request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.0.request(requested); }
 
   #[inline]
   fn unsubscribe(&mut self) { self.0.unsubscribe(); }
@@ -140,9 +129,9 @@ impl<T> Debug for Inner<T> {
 
 impl<T: SubscriptionLike> SubscriptionLike for Inner<T> {
   fn request(&mut self, requested: usize) {
-      for v in &mut self.teardown {
-        v.request(requested);
-      }
+    for v in &mut self.teardown {
+      v.request(requested);
+    }
   }
 
   fn unsubscribe(&mut self) {
@@ -182,9 +171,7 @@ impl<T> SubscriptionLike for Arc<Mutex<T>>
 where
   T: SubscriptionLike,
 {
-  fn request(&mut self, requested: usize) {
-    self.lock().unwrap().request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.lock().unwrap().request(requested); }
 
   #[inline]
   fn unsubscribe(&mut self) { self.lock().unwrap().unsubscribe() }
@@ -197,9 +184,7 @@ impl<T> SubscriptionLike for Rc<RefCell<T>>
 where
   T: SubscriptionLike,
 {
-  fn request(&mut self, requested: usize) {
-    self.borrow_mut().request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.borrow_mut().request(requested); }
 
   #[inline]
   fn unsubscribe(&mut self) { self.borrow_mut().unsubscribe() }
@@ -251,9 +236,7 @@ impl<T: SubscriptionLike> SubscriptionWrapper<T> {
 }
 
 impl<T: SubscriptionLike> SubscriptionLike for SubscriptionWrapper<T> {
-  fn request(&mut self, requested: usize) {
-    self.0.request(requested);
-  }
+  fn request(&mut self, requested: usize) { self.0.request(requested); }
   #[inline]
   fn unsubscribe(&mut self) { self.0.unsubscribe() }
 
@@ -278,9 +261,7 @@ pub struct SubscriptionGuard<T: SubscriptionLike>(pub(crate) T);
 impl<T: SubscriptionLike> SubscriptionGuard<T> {
   /// Wraps an existing subscription with a guard to enable RAII behavior for
   /// it.
-  pub fn new(subscription: T) -> SubscriptionGuard<T> {
-    SubscriptionGuard(subscription)
-  }
+  pub fn new(subscription: T) -> SubscriptionGuard<T> { SubscriptionGuard(subscription) }
 }
 
 impl<T: SubscriptionLike> Drop for SubscriptionGuard<T> {
@@ -289,20 +270,17 @@ impl<T: SubscriptionLike> Drop for SubscriptionGuard<T> {
 }
 
 #[derive(Clone)]
-pub struct SubscriptionProxy<S>(pub(crate)S);
+pub struct SubscriptionProxy<S>(pub(crate) S);
 
-impl<S> SubscriptionLike for SubscriptionProxy<S> where S: SubscriptionLike {
-  fn request(&mut self, requested: usize) {
-    self.0.request(requested);
-  }
+impl<S> SubscriptionLike for SubscriptionProxy<S>
+where
+  S: SubscriptionLike,
+{
+  fn request(&mut self, requested: usize) { self.0.request(requested); }
 
-  fn unsubscribe(&mut self) {
-    self.0.unsubscribe();
-  }
+  fn unsubscribe(&mut self) { self.0.unsubscribe(); }
 
-  fn is_closed(&self) -> bool {
-    self.0.is_closed()
-  }
+  fn is_closed(&self) -> bool { self.0.is_closed() }
 }
 
 #[cfg(test)]

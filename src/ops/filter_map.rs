@@ -117,7 +117,5 @@ mod test {
 
   benchmark_group!(do_bench, bench_map_types_mixed);
 
-  fn bench_map_types_mixed(b: &mut bencher::Bencher) {
-    b.iter(map_types_mixed);
-  }
+  fn bench_map_types_mixed(b: &mut bencher::Bencher) { b.iter(map_types_mixed); }
 }

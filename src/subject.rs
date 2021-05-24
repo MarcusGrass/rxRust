@@ -17,9 +17,7 @@ pub struct Subject<V, S> {
 }
 
 impl<O, U: SubscriptionLike> SubscriptionLike for Subject<O, U> {
-  fn request(&mut self, requested: usize) {
-    self.last_requested += requested;
-  }
+  fn request(&mut self, requested: usize) { self.last_requested += requested; }
 
   #[inline]
   fn unsubscribe(&mut self) { self.subscription.unsubscribe(); }

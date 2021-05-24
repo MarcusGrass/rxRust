@@ -32,11 +32,7 @@ pub trait SubscribeComplete<'a, N, C> {
 
   /// Invokes an execution of an Observable and registers Observer handlers for
   /// notifications it will emit.
-  fn subscribe_complete(
-    self,
-    next: N,
-    complete: C,
-  ) -> SubscriptionWrapper<Self::Unsub>;
+  fn subscribe_complete(self, next: N, complete: C) -> SubscriptionWrapper<Self::Unsub>;
 }
 
 impl<'a, S, N, C> SubscribeComplete<'a, N, C> for S
@@ -47,11 +43,7 @@ where
   S::Item: 'a,
 {
   type Unsub = S::Unsub;
-  fn subscribe_complete(
-    self,
-    next: N,
-    complete: C,
-  ) -> SubscriptionWrapper<Self::Unsub>
+  fn subscribe_complete(self, next: N, complete: C) -> SubscriptionWrapper<Self::Unsub>
   where
     Self: Sized,
     S::Item: 'a,
@@ -75,11 +67,7 @@ where
   S::Item: 'static,
 {
   type Unsub = S::Unsub;
-  fn subscribe_complete(
-    self,
-    next: N,
-    complete: C,
-  ) -> SubscriptionWrapper<Self::Unsub>
+  fn subscribe_complete(self, next: N, complete: C) -> SubscriptionWrapper<Self::Unsub>
   where
     Self: Sized,
   {

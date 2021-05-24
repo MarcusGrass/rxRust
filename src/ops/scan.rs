@@ -36,8 +36,7 @@ macro_rules! observable_impl {
 }
 }
 
-impl<OutputItem, Source, BinaryOp> Observable
-  for ScanOp<Source, BinaryOp, OutputItem>
+impl<OutputItem, Source, BinaryOp> Observable for ScanOp<Source, BinaryOp, OutputItem>
 where
   Source: Observable,
   OutputItem: Clone,
@@ -71,8 +70,7 @@ where
   Source: SharedObservable,
   OutputItem: Clone + Send + Sync + 'static,
   Source::Item: 'static,
-  BinaryOp:
-    FnMut(OutputItem, Source::Item) -> OutputItem + Send + Sync + 'static,
+  BinaryOp: FnMut(OutputItem, Source::Item) -> OutputItem + Send + Sync + 'static,
 {
   type Unsub = Source::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);

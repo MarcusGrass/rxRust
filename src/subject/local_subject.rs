@@ -26,9 +26,7 @@ impl<'a, Item, Err> LocalSubject<'a, Item, Err> {
     Self::default()
   }
   #[inline]
-  pub fn subscribed_size(&self) -> usize {
-    self.observers.observers.borrow().len()
-  }
+  pub fn subscribed_size(&self) -> usize { self.observers.observers.borrow().len() }
 }
 
 impl<'a, Item, Err> Observable for LocalSubject<'a, Item, Err> {

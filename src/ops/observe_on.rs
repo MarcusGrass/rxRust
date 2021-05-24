@@ -22,9 +22,7 @@ where
   SD: LocalScheduler + 'static,
 {
   type Unsub = S::Unsub;
-  fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
-  >(
+  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
     subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {

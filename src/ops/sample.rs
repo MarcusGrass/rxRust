@@ -189,8 +189,7 @@ mod test {
     let scheduler = ManualScheduler::now();
     let x = Rc::new(RefCell::new(vec![]));
 
-    let interval =
-      observable::interval(Duration::from_millis(1), scheduler.clone());
+    let interval = observable::interval(Duration::from_millis(1), scheduler.clone());
     {
       let x_c = x.clone();
       interval

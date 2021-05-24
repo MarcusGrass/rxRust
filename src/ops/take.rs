@@ -14,7 +14,10 @@ pub struct TakeOpSubscription<S> {
   pub(crate) requested: usize,
 }
 
-impl<S> SubscriptionLike for TakeOpSubscription<S> where S: SubscriptionLike {
+impl<S> SubscriptionLike for TakeOpSubscription<S>
+where
+  S: SubscriptionLike,
+{
   fn request(&mut self, requested: usize) {
     if self.requested < self.count {
       let request = if self.count - self.requested < requested {
@@ -27,15 +30,12 @@ impl<S> SubscriptionLike for TakeOpSubscription<S> where S: SubscriptionLike {
     }
   }
 
-  fn unsubscribe(&mut self) {
-    self.source.unsubscribe();
-  }
+  fn unsubscribe(&mut self) { self.source.unsubscribe(); }
 
   fn is_closed(&self) -> bool {
     self.source.is_closed() // Todo: check correctness
   }
 }
-
 
 observable_proxy_impl!(TakeOp, S);
 
@@ -48,19 +48,24 @@ where
     self,
     subscriber: Subscriber<O, LocalSubscription<'a>>,
   ) -> Self::Unsub
-    where O: Observer<Item=Self::Item,Err= Self::Err> + 'a {
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+  {
     let subscriber = Subscriber {
-    observer: TakeObserver {
-      observer: subscriber.observer,
-      count: self.count,
-      hits: 0,
-    },
+      observer: TakeObserver {
+        observer: subscriber.observer,
+        count: self.count,
+        hits: 0,
+      },
       subscription: subscriber.subscription,
     };
     let source_sub = self.source.actual_subscribe(subscriber);
-    LocalSubscription::new(TakeOpSubscription { source: source_sub, count: self.count, requested: 0 })
-
-    }
+    LocalSubscription::new(TakeOpSubscription {
+      source: source_sub,
+      count: self.count,
+      requested: 0,
+    })
+  }
 }
 
 impl<S> SharedObservable for TakeOp<S>
@@ -72,7 +77,9 @@ where
     self,
     subscriber: Subscriber<O, SharedSubscription>,
   ) -> Self::Unsub
-    where O: Observer<Item=Self::Item,Err= Self::Err> + Send + Sync + 'static {
+  where
+    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+  {
     let subscriber = Subscriber {
       observer: TakeObserver {
         observer: subscriber.observer,
@@ -82,10 +89,10 @@ where
       subscription: subscriber.subscription,
     };
     let source_sub = self.source.actual_subscribe(subscriber);
-    SharedSubscription::new(TakeOpSubscription{
+    SharedSubscription::new(TakeOpSubscription {
       source: source_sub,
       count: self.count,
-      requested: 0
+      requested: 0,
     })
   }
 }

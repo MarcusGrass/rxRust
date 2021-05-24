@@ -16,8 +16,7 @@ pub use interval::{interval, interval_at};
 
 pub(crate) mod connectable_observable;
 pub use connectable_observable::{
-  ConnectableObservable, LocalConnectableObservable,
-  SharedConnectableObservable,
+  ConnectableObservable, LocalConnectableObservable, SharedConnectableObservable,
 };
 
 mod observable_block_all;
@@ -79,8 +78,7 @@ use ops::{
 use std::ops::{Add, Mul};
 use std::time::{Duration, Instant};
 
-type ALLOp<O, F> =
-  DefaultIfEmptyOp<TakeOp<FilterOp<MapOp<O, F>, fn(&bool) -> bool>>>;
+type ALLOp<O, F> = DefaultIfEmptyOp<TakeOp<FilterOp<MapOp<O, F>, fn(&bool) -> bool>>>;
 
 pub trait Observable: Sized {
   type Item;
@@ -115,18 +113,13 @@ pub trait Observable: Sized {
   /// // 1234
   /// ```
   #[inline]
-  fn last_or(
-    self,
-    default: Self::Item,
-  ) -> DefaultIfEmptyOp<LastOp<Self, Self::Item>> {
+  fn last_or(self, default: Self::Item) -> DefaultIfEmptyOp<LastOp<Self, Self::Item>> {
     self.last().default_if_empty(default)
   }
 
   /// Emit only item n (0-indexed) emitted by an Observable
   #[inline]
-  fn element_at(self, nth: u32) -> TakeOp<SkipOp<Self>> {
-    self.skip(nth).first()
-  }
+  fn element_at(self, nth: u32) -> TakeOp<SkipOp<Self>> { self.skip(nth).first() }
 
   /// Do not emit any items from an Observable but mirror its termination
   /// notification
@@ -945,8 +938,7 @@ pub trait Observable: Sized {
     // our starting point
     let start = (Self::Item::default(), 0);
 
-    let acc =
-      accumulate_item as fn(Accum<Self::Item>, Self::Item) -> Accum<Self::Item>;
+    let acc = accumulate_item as fn(Accum<Self::Item>, Self::Item) -> Accum<Self::Item>;
     let avg = average_floats as fn(Accum<Self::Item>) -> Self::Item;
 
     self.scan_initial(start, acc).last().map(avg)
@@ -972,9 +964,7 @@ pub trait Observable: Sized {
   /// Because the Observable is multicasting it makes the stream `hot`.
   /// This is an alias for `publish().ref_count()`
   #[inline]
-  fn share<Subject, Inner>(
-    self,
-  ) -> RefCount<Inner, ConnectableObservable<Self, Subject>>
+  fn share<Subject, Inner>(self) -> RefCount<Inner, ConnectableObservable<Self, Subject>>
   where
     Inner: RefCountCreator<Connectable = ConnectableObservable<Self, Subject>>,
     Subject: Default,
@@ -1071,11 +1061,7 @@ pub trait Observable: Sized {
   /// Emits a value from the source Observable only after a particular time span
   /// has passed without another source emission.
   #[inline]
-  fn debounce<SD>(
-    self,
-    duration: Duration,
-    scheduler: SD,
-  ) -> DebounceOp<Self, SD> {
+  fn debounce<SD>(self, duration: Duration, scheduler: SD) -> DebounceOp<Self, SD> {
     DebounceOp {
       source: self,
       duration,
@@ -1151,10 +1137,7 @@ pub trait Observable: Sized {
   /// // 5
   /// ```
   #[inline]
-  fn default_if_empty(
-    self,
-    default_value: Self::Item,
-  ) -> DefaultIfEmptyOp<Self> {
+  fn default_if_empty(self, default_value: Self::Item) -> DefaultIfEmptyOp<Self> {
     DefaultIfEmptyOp {
       source: self,
       is_empty: true,
@@ -1297,9 +1280,7 @@ mod tests {
 
   benchmark_group!(do_bench_ignore, ignore_emements_bench);
 
-  fn ignore_emements_bench(b: &mut bencher::Bencher) {
-    b.iter(smoke_ignore_elements);
-  }
+  fn ignore_emements_bench(b: &mut bencher::Bencher) { b.iter(smoke_ignore_elements); }
 
   #[test]
   fn shared_ignore_elements() {
