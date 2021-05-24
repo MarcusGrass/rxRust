@@ -92,7 +92,7 @@ where
       marker: TypeHint::new(),
     });
     let mut unsub = self.actual_subscribe(subscriber);
-    unsub.request(u128::MAX);
+    unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
   }
 }
@@ -124,7 +124,7 @@ where
       marker: TypeHint::new(),
     });
     let mut unsub = self.0.actual_subscribe(subscriber);
-    unsub.request(u128::MAX);
+    unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
   }
 }

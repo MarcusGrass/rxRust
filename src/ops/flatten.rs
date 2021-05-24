@@ -281,7 +281,7 @@ where
       observer: self.inner_observer.clone(),
       subscription: SharedSubscription::default(),
     });
-    subscription.request(u128::MAX); // TODO: Propagate requested from inner
+    subscription.request(usize::MAX); // TODO: Propagate requested from inner
     self.subscription.add(subscription);
   }
 
@@ -360,7 +360,7 @@ where
     state.register_new_observable();
     drop(state);
     let mut sub = value.actual_subscribe(Subscriber::local(self.inner_observer.clone()));
-    sub.request(u128::MAX); // TODO: Propagate requested from inner
+    sub.request(usize::MAX); // TODO: Propagate requested from inner
     self.subscription.add(
       sub
     );

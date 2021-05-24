@@ -49,7 +49,7 @@ struct LocalThrowPublisher<'a, Err, O> {
 impl<'a, Err: Clone, O> SubscriptionLike for LocalThrowPublisher<'a, Err, O>
 where O: Observer<Err=Err>
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.sub.observer.error(self.err.clone());
   }
 
@@ -70,7 +70,7 @@ struct SharedThrowPublisher<Err, O> {
 impl<Err: Clone, O> SubscriptionLike for SharedThrowPublisher<Err, O>
   where O: Observer<Err=Err>
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.sub.observer.error(self.err.clone());
   }
 
@@ -120,7 +120,7 @@ struct SharedEmptyPublisherFactory<O> {
 
 impl<'a, O> SubscriptionLike for LocalEmptyPublisherFactory<'a, O>
   where O: Observer + 'a {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.sub.observer.complete();
   }
 
@@ -133,7 +133,7 @@ impl<'a, O> SubscriptionLike for LocalEmptyPublisherFactory<'a, O>
 }
 
 impl<O> SubscriptionLike for SharedEmptyPublisherFactory<O> where O: Observer + Send + Sync + 'static {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.sub.observer.complete();
   }
 

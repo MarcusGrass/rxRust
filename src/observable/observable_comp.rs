@@ -62,7 +62,7 @@ where
       is_stopped: false,
       marker: TypeHint::new(),
     }));
-    unsub.request(u128::MAX);
+    unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
   }
 }
@@ -89,7 +89,7 @@ where
       is_stopped: false,
       marker: TypeHint::new(),
     }));
-    unsub.request(u128::MAX);
+    unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
   }
 }

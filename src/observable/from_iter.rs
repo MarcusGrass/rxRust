@@ -40,14 +40,14 @@ pub fn from_iter<Iter, Item>(iter: Iter) -> ObservableBase<IterPublisherFactory<
 pub struct LocalIterPublisher<'a, Iter, O> {
   it: Iter,
   sub: Subscriber<O, LocalSubscription<'a>>,
-  cursor: u128,
+  cursor: usize,
 }
 
 #[derive(Clone)]
 pub struct SharedIterPublisher<Iter, O> {
   it: Iter,
   sub: Subscriber<O, SharedSubscription>,
-  cursor: u128,
+  cursor: usize,
 }
 
 #[derive(Clone)]
@@ -87,7 +87,7 @@ impl<Iter, O> SubscriptionLike for SharedIterPublisher<Iter, O>
   where Iter: IntoIterator + Clone + 'static,
         O: Observer<Item=Iter::Item> + 'static
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     let mut it = self.it.clone().into_iter()
         .skip(self.cursor as usize);
     let mut provided = 0;
@@ -120,7 +120,7 @@ impl<'a, Iter, O> SubscriptionLike for LocalIterPublisher<'a, Iter, O>
   where Iter: IntoIterator + Clone + 'a,
         O: Observer<Item=Iter::Item> + 'a
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     let mut it = self.it.clone().into_iter()
         .skip(self.cursor as usize);
     let mut provided = 0;

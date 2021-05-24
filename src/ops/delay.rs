@@ -11,34 +11,15 @@ pub struct DelayOp<S, SD> {
 
 observable_proxy_impl!(DelayOp, S, SD);
 
-macro_rules! impl_observable {
-  ($op: ident, $subscriber: ident) => {{
-    let delay = $op.delay;
-    let source = $op.source;
-    let scheduler = $op.scheduler;
-    let subscription = $subscriber.subscription.clone();
-    let c_subscription = subscription.clone();
-    let handle = scheduler.schedule(
-      move |_| {
-        c_subscription.add(DelayOpSubscription{source: source.actual_subscribe($subscriber)});
-      },
-      Some(delay),
-      (),
-    );
-    subscription.add(handle);
-    subscription
-  }};
-}
-
 pub struct DelayOpSubscription<S> {
   source: S,
-  requested: Arc<RwLock<u128>>,
+  requested: Arc<RwLock<usize>>,
   started: bool,
   handle: SpawnHandle,
 }
 
 impl<S> SubscriptionLike for DelayOpSubscription<S> where S: SubscriptionLike {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     if !self.started {
       *self.requested.write().unwrap() += requested;
       self.started = true;

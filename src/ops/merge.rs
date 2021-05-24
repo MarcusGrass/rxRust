@@ -55,7 +55,7 @@ where
 #[derive(Clone)]
 pub struct MergeSubscription<S1, S2>(S1, S2);
 impl<S1, S2> SubscriptionLike for MergeSubscription<S1, S2> where S1: SubscriptionLike, S2: SubscriptionLike {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.0.request(requested);
     self.1.request(requested);
   }

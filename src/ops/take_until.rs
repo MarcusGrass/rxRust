@@ -54,7 +54,7 @@ pub struct TakeUntilSubscription<S, N> {
 impl<S, N> SubscriptionLike for TakeUntilSubscription<S, N>
 where S: SubscriptionLike, N: SubscriptionLike
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     if !self.started {
       self.notifier.request(requested);
       self.started = true;

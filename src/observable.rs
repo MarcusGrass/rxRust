@@ -502,7 +502,7 @@ pub trait Observable: Sized {
   /// ```
   ///
   #[inline]
-  fn take(self, count: u32) -> TakeOp<Self> {
+  fn take(self, count: usize) -> TakeOp<Self> {
     TakeOp {
       source: self,
       count,

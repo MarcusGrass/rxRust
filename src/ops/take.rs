@@ -4,18 +4,18 @@ use crate::{complete_proxy_impl, error_proxy_impl, is_stopped_proxy_impl};
 #[derive(Clone)]
 pub struct TakeOp<S> {
   pub(crate) source: S,
-  pub(crate) count: u32,
+  pub(crate) count: usize,
 }
 
 #[derive(Clone)]
 pub struct TakeOpSubscription<S> {
   pub(crate) source: S,
-  pub(crate) count: u128,
-  pub(crate) requested: u128,
+  pub(crate) count: usize,
+  pub(crate) requested: usize,
 }
 
 impl<S> SubscriptionLike for TakeOpSubscription<S> where S: SubscriptionLike {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     if self.requested < self.count {
       let request = if self.count - self.requested < requested {
         self.count - self.requested
@@ -58,7 +58,7 @@ where
       subscription: subscriber.subscription,
     };
     let source_sub = self.source.actual_subscribe(subscriber);
-    LocalSubscription::new(TakeOpSubscription { source: source_sub, count: self.count as u128, requested: 0 })
+    LocalSubscription::new(TakeOpSubscription { source: source_sub, count: self.count, requested: 0 })
 
     }
 }
@@ -84,7 +84,7 @@ where
     let source_sub = self.source.actual_subscribe(subscriber);
     SharedSubscription::new(TakeOpSubscription{
       source: source_sub,
-      count: self.count as u128,
+      count: self.count,
       requested: 0
     })
   }
@@ -92,8 +92,8 @@ where
 
 pub struct TakeObserver<O> {
   observer: O,
-  count: u32,
-  hits: u32,
+  count: usize,
+  hits: usize,
 }
 
 impl<O, Item, Err> Observer for TakeObserver<O>

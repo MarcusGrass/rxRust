@@ -53,7 +53,7 @@ pub struct LocalFnPublisher<F> {
 }
 
 impl<F> SubscriptionLike for LocalFnPublisher<F> where F: FnOnce() -> () {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     let n: CallFunc<F> = CallFunc::Noop;
 
     match std::mem::replace(&mut self.call, n) {
@@ -79,7 +79,7 @@ struct SharedFnPublisher<F> {
 }
 
 impl<F> SubscriptionLike for SharedFnPublisher<F> where F: FnOnce() -> (){
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     let n: CallFunc<F> = CallFunc::Noop;
 
     match std::mem::replace(&mut self.call, n) {

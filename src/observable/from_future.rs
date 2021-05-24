@@ -47,8 +47,7 @@ struct LocalFuturePublisher {
 
 impl SubscriptionLike for LocalFuturePublisher
 {
-  fn request(&mut self, _: u128) {
-
+  fn request(&mut self, _: usize) {
   }
 
   fn unsubscribe(&mut self) {
@@ -67,7 +66,7 @@ struct SharedFuturePublisher {
 
 impl SubscriptionLike for SharedFuturePublisher
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
   }
 
   fn unsubscribe(&mut self) {
@@ -214,7 +213,7 @@ pub struct LocalFutureResultPublisher {
 }
 
 impl SubscriptionLike for LocalFutureResultPublisher {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
   }
 
   fn unsubscribe(&mut self) {
@@ -232,7 +231,7 @@ pub struct SharedFutureResultPublisher {
 }
 
 impl SubscriptionLike for SharedFutureResultPublisher {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
   }
 
   fn unsubscribe(&mut self) {

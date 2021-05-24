@@ -81,7 +81,7 @@ impl LocalScheduler for ManualScheduler {
     task: impl FnMut(usize) + 'static,
     delay: Duration,
     at: Option<Instant>,
-    take: Option<usize>
+    _take: Option<usize>
   ) -> SpawnHandle {
     let handle = SpawnHandle::new(AbortHandle::new_pair().0);
     (*self.repeating_task.write().unwrap()).push(Arc::new(RwLock::new(

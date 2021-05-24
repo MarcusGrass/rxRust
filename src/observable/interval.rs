@@ -87,7 +87,7 @@ struct LocalIntervalPublisher<S, O> {
 impl<S, O> SubscriptionLike for LocalIntervalPublisher<S, O>
 where S: LocalScheduler, O: Observer<Item=u128> + 'static,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     let o_c = self.observer.clone();
     let h = self.scheduler.schedule_repeating(
       move |i| {
@@ -128,7 +128,7 @@ struct SharedIntervalPublisher<S, O> {
 impl<S, O> SubscriptionLike for SharedIntervalPublisher<S, O>
   where S: SharedScheduler, O: Observer<Item=u128> + Send + Sync + 'static,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     let o_c = self.observer.clone();
     let h = self.scheduler.schedule_repeating(
       move |i| {

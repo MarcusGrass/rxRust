@@ -11,7 +11,7 @@ use std::{
 /// Subscription returns from `Observable.subscribe(Subscriber)` to allow
 ///  unsubscribing.
 pub trait SubscriptionLike {
-  fn request(&mut self, requested: u128);
+  fn request(&mut self, requested: usize);
 
   /// This allows deregistering an stream before it has finished receiving all
   /// events (i.e. before onCompleted is called).
@@ -56,7 +56,7 @@ pub trait TearDownSize: SubscriptionLike {
 
 impl<'a> SubscriptionLike for LocalSubscription<'a> {
   #[inline]
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.0.request(requested)
   }
 
@@ -107,7 +107,7 @@ impl TearDownSize for SharedSubscription {
 
 impl SubscriptionLike for SharedSubscription {
   #[inline]
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.0.request(requested);
   }
 
@@ -139,7 +139,7 @@ impl<T> Debug for Inner<T> {
 }
 
 impl<T: SubscriptionLike> SubscriptionLike for Inner<T> {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
       for v in &mut self.teardown {
         v.request(requested);
       }
@@ -182,7 +182,7 @@ impl<T> SubscriptionLike for Arc<Mutex<T>>
 where
   T: SubscriptionLike,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.lock().unwrap().request(requested);
   }
 
@@ -197,7 +197,7 @@ impl<T> SubscriptionLike for Rc<RefCell<T>>
 where
   T: SubscriptionLike,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.borrow_mut().request(requested);
   }
 
@@ -212,7 +212,7 @@ impl<T: ?Sized> SubscriptionLike for Box<T>
 where
   T: SubscriptionLike,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     let s = &mut **self;
     s.request(requested);
   }
@@ -251,7 +251,7 @@ impl<T: SubscriptionLike> SubscriptionWrapper<T> {
 }
 
 impl<T: SubscriptionLike> SubscriptionLike for SubscriptionWrapper<T> {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.0.request(requested);
   }
   #[inline]
@@ -292,7 +292,7 @@ impl<T: SubscriptionLike> Drop for SubscriptionGuard<T> {
 pub struct SubscriptionProxy<S>(pub(crate)S);
 
 impl<S> SubscriptionLike for SubscriptionProxy<S> where S: SubscriptionLike {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.0.request(requested);
   }
 

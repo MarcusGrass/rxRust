@@ -79,7 +79,7 @@ where
       marker: TypeHint::new(),
     });
     let mut sub = self.actual_subscribe(subscriber);
-    sub.request(u128::MAX);
+    sub.request(usize::MAX);
     while !*stopped_c.lock().unwrap() {
       std::thread::sleep(Duration::from_millis(1))
     }

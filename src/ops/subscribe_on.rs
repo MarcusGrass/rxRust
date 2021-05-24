@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::scheduler::SharedScheduler;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub struct SubscribeOnOP<S, SD> {
@@ -53,12 +53,12 @@ where
 pub struct OnSubSubscription<S> {
   sub: S,
   handle: SpawnHandle,
-  req: Arc<RwLock<u128>>,
+  req: Arc<RwLock<usize>>,
   started: bool,
 }
 
 impl<S> SubscriptionLike for OnSubSubscription<S> where S: SubscriptionLike {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     if !self.started {
       *self.req.write().unwrap() += requested;
       self.started = true;

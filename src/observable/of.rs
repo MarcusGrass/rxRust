@@ -78,7 +78,7 @@ impl<'a, Item: Clone, O> SubscriptionLike for LocalOfPublisher<'a, Item, O>
   where
       O: Observer<Item=Item> + 'a
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.1.observer.next(self.0.clone());
     self.1.observer.complete();
   }
@@ -95,7 +95,7 @@ impl<Item: Clone + Sync + Send, O> SubscriptionLike for SharedOfPublisher<Item, 
   where
       O: Observer<Item=Item> + Send + Sync + 'static
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.1.observer.next(self.0.clone());
     self.1.observer.complete();
   }
@@ -171,7 +171,7 @@ impl<'a, Item: Clone, Err: Clone, O> SubscriptionLike for LocalOfResultPublisher
   where
       O: Observer<Item=Item, Err=Err> + 'a
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     match self.0.clone() {
       Ok(v) => {
         self.1.observer.next(v);
@@ -195,7 +195,7 @@ impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static, O>
   where
       O: Observer<Item=Item, Err=Err> + Send + Sync + 'static
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     match self.0.clone() {
       Ok(v) => {
         self.1.observer.next(v);
@@ -267,7 +267,7 @@ impl<'a, Item: Clone, O> SubscriptionLike for LocalOfOptionPublisher<'a, Item, O
   where
       O: Observer<Item=Item> + 'a
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     match self.0.clone() {
       Some(v) => self.1.observer.next(v),
       None => {}
@@ -288,7 +288,7 @@ impl<Item: Clone + Send + Sync + 'static, O> SubscriptionLike for SharedOfOption
   where
       O: Observer<Item=Item> + Send + Sync + 'static
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     match self.0.clone() {
       Some(v) => self.1.observer.next(v),
       None => {}
@@ -361,7 +361,7 @@ impl<'a, F, Item, O> SubscriptionLike for LocalOfFnPublisher<'a, F, Item, O>
       O: Observer<Item=Item> + 'a,
       F: Fn() -> Item
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.1.observer.next((self.0)());
     self.1.observer.complete();
   }
@@ -380,7 +380,7 @@ impl<F, Item, O> SubscriptionLike for SharedOfFnPublisher<F, Item, O>
       O: Observer<Item=Item> + Send + Sync + 'static,
       F: Fn() -> Item
 {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
     self.1.observer.next((self.0)());
     self.1.observer.complete();
   }

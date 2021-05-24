@@ -96,7 +96,7 @@ where
   Target: FnMut(),
   S: SubscriptionLike,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.source.request(requested);
   }
 
@@ -117,7 +117,7 @@ where
   Target: FnMut(),
   S: SubscriptionLike,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.source.request(requested);
   }
 
@@ -137,7 +137,7 @@ where
   Target: FnMut(),
   S: SubscriptionLike,
 {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, requested: usize) {
     self.source.request(requested);
   }
 

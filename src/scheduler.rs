@@ -93,7 +93,7 @@ impl SpawnHandle {
 }
 
 impl SubscriptionLike for SpawnHandle {
-  fn request(&mut self, _: u128) {
+  fn request(&mut self, _: usize) {
   }
 
   fn unsubscribe(&mut self) {
