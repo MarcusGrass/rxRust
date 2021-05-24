@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::scheduler::SharedScheduler;
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Clone)]
 pub struct SubscribeOnOP<S, SD> {
@@ -24,16 +25,54 @@ where
   ) -> Self::Unsub {
     let source = self.source;
     let subscription = subscriber.subscription.clone();
+    let req = Arc::new(RwLock::new(0));
+    let r_c = req.clone();
     let handle = self.scheduler.schedule(
       move |_| {
         let subscription = subscriber.subscription.clone();
-        subscription.add(source.actual_subscribe(subscriber))
+        let mut actual = source.actual_subscribe(subscriber);
+        let r = *r_c.read().unwrap();
+        if r > 0 {
+          actual.request(r);
+        }
+        subscription.add(actual);
       },
       None,
       (),
     );
-    subscription.add(handle);
-    subscription
+    SharedSubscription::new(OnSubSubscription{
+      sub: subscription,
+      handle,
+      req,
+      started: false
+    })
+  }
+}
+
+#[derive(Clone)]
+pub struct OnSubSubscription<S> {
+  sub: S,
+  handle: SpawnHandle,
+  req: Arc<RwLock<u128>>,
+  started: bool,
+}
+
+impl<S> SubscriptionLike for OnSubSubscription<S> where S: SubscriptionLike {
+  fn request(&mut self, requested: u128) {
+    if !self.started {
+      *self.req.write().unwrap() += requested;
+      self.started = true;
+    } else {
+      self.sub.request(requested);
+    }
+  }
+
+  fn unsubscribe(&mut self) {
+    self.handle.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.handle.is_closed()
   }
 }
 

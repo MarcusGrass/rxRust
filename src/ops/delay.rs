@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use std::time::Duration;
+use std::sync::{RwLock, Arc};
 
 #[derive(Clone)]
 pub struct DelayOp<S, SD> {
@@ -30,20 +31,28 @@ macro_rules! impl_observable {
 }
 
 pub struct DelayOpSubscription<S> {
-  source: S
+  source: S,
+  requested: Arc<RwLock<u128>>,
+  started: bool,
+  handle: SpawnHandle,
 }
 
 impl<S> SubscriptionLike for DelayOpSubscription<S> where S: SubscriptionLike {
   fn request(&mut self, requested: u128) {
-    self.source.request(requested);
+    if !self.started {
+      *self.requested.write().unwrap() += requested;
+      self.started = true;
+    } else {
+      self.source.request(requested);
+    }
   }
 
   fn unsubscribe(&mut self) {
-    self.source.unsubscribe();
+    self.handle.unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
-    self.source.is_closed()
+    self.handle.is_closed()
   }
 }
 
@@ -52,7 +61,7 @@ impl<S, SD> SharedObservable for DelayOp<S, SD>
 where
   S: SharedObservable + Send + Sync + 'static,
   S::Unsub: Send + Sync,
-  SD: SharedScheduler,
+  SD: SharedScheduler + Send + Sync + 'static,
 {
   type Unsub = SharedSubscription;
   fn actual_subscribe<
@@ -61,7 +70,31 @@ where
     self,
     subscriber: Subscriber<O, SharedSubscription>,
   ) -> Self::Unsub {
-    impl_observable!(self, subscriber)
+    let delay = self.delay;
+    let source = self.source;
+    let scheduler = self.scheduler;
+    let subscription = subscriber.subscription.clone();
+    let c_subscription = subscription.clone();
+    let requested = Arc::new(RwLock::new(0));
+    let r_c = requested.clone();
+    let handle = scheduler.schedule(
+      move |_| {
+        let mut sub = source.actual_subscribe(subscriber);
+        let r = *r_c.read().unwrap();
+        if r > 0 {
+          sub.request(r);
+        }
+        c_subscription.add(sub);
+      },
+      Some(delay),
+      (),
+    );
+    SharedSubscription::new(DelayOpSubscription{
+      source: subscription,
+      requested,
+      started: false,
+      handle
+    })
   }
 }
 
@@ -69,7 +102,7 @@ impl<S, SD, Unsub> LocalObservable<'static> for DelayOp<S, SD>
 where
   S: LocalObservable<'static, Unsub = Unsub> + 'static,
   Unsub: SubscriptionLike + 'static,
-  SD: LocalScheduler,
+  SD: LocalScheduler + 'static,
 {
   type Unsub = LocalSubscription<'static>;
   fn actual_subscribe<
@@ -78,7 +111,31 @@ where
     self,
     subscriber: Subscriber<O, LocalSubscription<'static>>,
   ) -> Self::Unsub {
-    impl_observable!(self, subscriber)
+    let delay = self.delay;
+    let source = self.source;
+    let scheduler = self.scheduler;
+    let subscription = subscriber.subscription.clone();
+    let c_subscription = subscription.clone();
+    let requested = Arc::new(RwLock::new(0));
+    let r_c = requested.clone();
+    let handle = scheduler.schedule(
+      move |_| {
+        let mut sub = source.actual_subscribe(subscriber);
+        let r = *r_c.read().unwrap();
+        if r > 0 {
+          sub.request(r);
+        }
+        c_subscription.add(sub);
+      },
+      Some(delay),
+      (),
+    );
+    LocalSubscription::new(DelayOpSubscription{
+      source: subscription,
+      requested,
+      started: false,
+      handle
+    })
   }
 }
 
