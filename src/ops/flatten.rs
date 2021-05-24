@@ -277,11 +277,12 @@ where
     let mut state = self.state.lock().unwrap();
     state.register_new_observable();
     drop(state);
-
-    self.subscription.add(value.actual_subscribe(Subscriber {
+    let mut subscription = value.actual_subscribe(Subscriber {
       observer: self.inner_observer.clone(),
       subscription: SharedSubscription::default(),
-    }));
+    });
+    subscription.request(u128::MAX); // TODO: Propagate requested from inner
+    self.subscription.add(subscription);
   }
 
   error_proxy_impl!(Err, inner_observer);
@@ -326,10 +327,7 @@ where
       state,
     };
 
-    subscription
-      .add(self.source.actual_subscribe(Subscriber::shared(observer)));
-
-    subscription
+    SharedSubscription::new(self.source.actual_subscribe(Subscriber::shared(observer)))
   }
 }
 
@@ -361,9 +359,10 @@ where
     let mut state = self.state.borrow_mut();
     state.register_new_observable();
     drop(state);
-
+    let mut sub = value.actual_subscribe(Subscriber::local(self.inner_observer.clone()));
+    sub.request(u128::MAX); // TODO: Propagate requested from inner
     self.subscription.add(
-      value.actual_subscribe(Subscriber::local(self.inner_observer.clone())),
+      sub
     );
   }
 
@@ -407,9 +406,7 @@ where
       state,
     };
 
-    subscription.add(self.source.actual_subscribe(Subscriber::local(observer)));
-
-    subscription
+    LocalSubscription::new(self.source.actual_subscribe(Subscriber::local(observer)))
   }
 }
 
@@ -446,9 +443,9 @@ mod test {
       });
     }
 
+    assert_eq!(numbers_store, (0..10).collect::<Vec<_>>());
     assert_eq!(even_store, vec![0, 2, 4, 6, 8]);
     assert_eq!(odd_store, vec![1, 3, 5, 7, 9]);
-    assert_eq!(numbers_store, (0..10).collect::<Vec<_>>());
   }
 
   #[test]

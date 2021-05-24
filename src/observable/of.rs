@@ -84,7 +84,6 @@ impl<'a, Item: Clone, O> SubscriptionLike for LocalOfPublisher<'a, Item, O>
   }
 
   fn unsubscribe(&mut self) {
-    todo!()
   }
 
   fn is_closed(&self) -> bool {
@@ -333,8 +332,6 @@ impl<Item: Clone + Send + Sync + 'static> SharedPublisherFactory for OfOptionPub
 ///   .subscribe(|v| {println!("{},", v)});
 /// ```
 pub fn of_fn<F, Item>(f: F) -> ObservableBase<OfFnPublisherFactory<F, Item>>
-where
-  F: FnOnce() -> Item,
 {
   ObservableBase::new(OfFnPublisherFactory(f, TypeHint::new()))
 }

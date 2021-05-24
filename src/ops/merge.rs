@@ -38,15 +38,35 @@ where
       subscription: subscription.clone(),
       completed_one: false,
     }));
-    subscription.add(self.source1.actual_subscribe(Subscriber {
+
+    LocalSubscription::new(MergeSubscription(self.source1.actual_subscribe(
+      Subscriber {
       observer: merge_observer.clone(),
       subscription: LocalSubscription::default(),
-    }));
-    subscription.add(self.source2.actual_subscribe(Subscriber {
-      observer: merge_observer,
-      subscription: LocalSubscription::default(),
-    }));
-    subscription
+    }), self.source2.actual_subscribe(
+      Subscriber {
+        observer: merge_observer,
+        subscription: LocalSubscription::default(),
+      }
+    )))
+  }
+}
+
+#[derive(Clone)]
+pub struct MergeSubscription<S1, S2>(S1, S2);
+impl<S1, S2> SubscriptionLike for MergeSubscription<S1, S2> where S1: SubscriptionLike, S2: SubscriptionLike {
+  fn request(&mut self, requested: u128) {
+    self.0.request(requested);
+    self.1.request(requested);
+  }
+
+  fn unsubscribe(&mut self) {
+    self.0.unsubscribe();
+    self.1.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.0.is_closed() && self.1.is_closed()
   }
 }
 
@@ -69,15 +89,16 @@ where
       subscription: subscription.clone(),
       completed_one: false,
     }));
-    subscription.add(self.source1.actual_subscribe(Subscriber {
-      observer: merge_observer.clone(),
-      subscription: SharedSubscription::default(),
-    }));
-    subscription.add(self.source2.actual_subscribe(Subscriber {
-      observer: merge_observer,
-      subscription: SharedSubscription::default(),
-    }));
-    subscription
+    SharedSubscription::new(MergeSubscription(self.source1.actual_subscribe(
+      Subscriber {
+        observer: merge_observer.clone(),
+        subscription: SharedSubscription::default(),
+      }), self.source2.actual_subscribe(
+      Subscriber {
+        observer: merge_observer,
+        subscription: SharedSubscription::default(),
+      }
+    )))
   }
 }
 

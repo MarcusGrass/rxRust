@@ -142,7 +142,6 @@ impl<'a, Iter, O> SubscriptionLike for LocalIterPublisher<'a, Iter, O>
   }
 
   fn unsubscribe(&mut self) {
-    todo!()
   }
 
   fn is_closed(&self) -> bool {

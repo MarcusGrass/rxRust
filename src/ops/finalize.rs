@@ -25,7 +25,7 @@ where
   S: LocalObservable<'a>,
   F: FnMut() + 'static,
 {
-  type Unsub = S::Unsub;
+  type Unsub = LocalSubscription<'a>;
 
   fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
@@ -33,16 +33,17 @@ where
   ) -> Self::Unsub {
     let subscription = subscriber.subscription.clone();
     let func = Rc::new(RefCell::new(Some(self.func)));
-    subscription.add(FinalizerSubscription {
-      is_closed: false,
-      func: func.clone(),
-    });
-    self.source.actual_subscribe(Subscriber {
+    let actual = self.source.actual_subscribe(Subscriber {
       observer: FinalizerObserver {
         observer: subscriber.observer,
-        func,
+        func: func.clone(),
       },
       subscription,
+    });
+    LocalSubscription::new(FinalizerSubscription{
+      source: actual,
+      func,
+      is_closed: false
     })
   }
 }
@@ -53,7 +54,7 @@ where
   F: FnMut() + Send + Sync + 'static,
   S::Unsub: Send + Sync,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
 
   fn actual_subscribe<
     O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
@@ -63,16 +64,17 @@ where
   ) -> Self::Unsub {
     let subscription = subscriber.subscription.clone();
     let func = Arc::new(Mutex::new(Some(self.func)));
-    subscription.add(FinalizerSubscription {
-      is_closed: false,
-      func: func.clone(),
-    });
-    self.source.actual_subscribe(Subscriber {
+    let actual = self.source.actual_subscribe(Subscriber {
       observer: FinalizerObserver {
         observer: subscriber.observer,
-        func,
+        func: func.clone(),
       },
       subscription,
+    });
+    SharedSubscription::new(FinalizerSubscription{
+      source: actual,
+      func,
+      is_closed: false
     })
   }
 }
@@ -82,18 +84,20 @@ struct FinalizerObserver<O, F> {
   func: F,
 }
 
-struct FinalizerSubscription<F> {
+struct FinalizerSubscription<F, S> {
+  source: S,
   is_closed: bool,
   func: F,
 }
 
-impl<Target> SubscriptionLike
-  for FinalizerSubscription<Arc<Mutex<Option<Target>>>>
+impl<Target, S> SubscriptionLike
+  for FinalizerSubscription<Arc<Mutex<Option<Target>>>, S>
 where
   Target: FnMut(),
+  S: SubscriptionLike,
 {
   fn request(&mut self, requested: u128) {
-    todo!()
+    self.source.request(requested);
   }
 
   fn unsubscribe(&mut self) {
@@ -107,13 +111,14 @@ where
   fn is_closed(&self) -> bool { self.is_closed }
 }
 
-impl<Target> SubscriptionLike
-  for FinalizerSubscription<Rc<RefCell<Option<Target>>>>
+impl<Target, S> SubscriptionLike
+  for FinalizerSubscription<Rc<RefCell<Option<Target>>>, S>
 where
   Target: FnMut(),
+  S: SubscriptionLike,
 {
   fn request(&mut self, requested: u128) {
-    todo!()
+    self.source.request(requested);
   }
 
   fn unsubscribe(&mut self) {
@@ -127,12 +132,13 @@ where
   fn is_closed(&self) -> bool { self.is_closed }
 }
 
-impl<Target> SubscriptionLike for FinalizerSubscription<Box<Option<Target>>>
+impl<Target, S> SubscriptionLike for FinalizerSubscription<Box<Option<Target>>, S>
 where
   Target: FnMut(),
+  S: SubscriptionLike,
 {
   fn request(&mut self, requested: u128) {
-    todo!()
+    self.source.request(requested);
   }
 
   fn unsubscribe(&mut self) {

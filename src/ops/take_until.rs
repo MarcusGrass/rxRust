@@ -12,7 +12,7 @@ pub struct TakeUntilOp<S, N> {
 
 #[doc(hidden)]
 macro_rules! observable_impl {
-    ($subscription:ty, $sharer:path, $mutability_enabler:path,
+    ($subscription:ty, $sub_creator:path, $sharer:path, $mutability_enabler:path,
                       $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
@@ -35,11 +35,41 @@ macro_rules! observable_impl {
       },
       subscription: subscription.clone(),
     };
-    subscription.add(self.notifier.actual_subscribe(notifier_subscriber));
-    subscription.add(self.source.actual_subscribe(main_subscriber));
-    subscription
+    $sub_creator(TakeUntilSubscription{
+      source: self.source.actual_subscribe(main_subscriber),
+      notifier: self.notifier.actual_subscribe(notifier_subscriber),
+      started: false
+    })
   }
 }
+}
+
+#[derive(Clone)]
+pub struct TakeUntilSubscription<S, N> {
+  source: S,
+  notifier: N,
+  started: bool
+}
+
+impl<S, N> SubscriptionLike for TakeUntilSubscription<S, N>
+where S: SubscriptionLike, N: SubscriptionLike
+{
+  fn request(&mut self, requested: u128) {
+    if !self.started {
+      self.notifier.request(requested);
+      self.started = true;
+    }
+    self.source.request(requested);
+  }
+
+  fn unsubscribe(&mut self) {
+    self.source.unsubscribe();
+    self.notifier.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.notifier.is_closed() || self.source.is_closed()
+  }
 }
 
 observable_proxy_impl!(TakeUntilOp, S, N);
@@ -50,7 +80,7 @@ where
   N: LocalObservable<'a, Err = S::Err> + 'a,
 {
   type Unsub = LocalSubscription<'a>;
-  observable_impl!(LocalSubscription<'a>, Rc::new, RefCell::new, 'a);
+  observable_impl!(LocalSubscription<'a>, LocalSubscription::new, Rc::new, RefCell::new, 'a);
 }
 
 impl<S, N> SharedObservable for TakeUntilOp<S, N>
@@ -65,6 +95,7 @@ where
   type Unsub = SharedSubscription;
   observable_impl!(
     SharedSubscription,
+    SharedSubscription::new,
     Arc::new,
     Mutex::new,
     Send + Sync + 'static

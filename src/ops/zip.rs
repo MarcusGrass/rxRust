@@ -39,16 +39,17 @@ where
     let sub = subscriber.subscription;
     let o_zip = ZipObserver::new(subscriber.observer, sub.clone());
     let o_zip = Rc::new(RefCell::new(o_zip));
-    sub.add(self.a.actual_subscribe(Subscriber {
+    let s = LocalSubscription::default();
+    s.add(self.a.actual_subscribe(Subscriber {
       observer: AObserver(o_zip.clone(), TypeHint::new()),
       subscription: LocalSubscription::default(),
     }));
 
-    sub.add(self.b.actual_subscribe(Subscriber {
+    s.add(self.b.actual_subscribe(Subscriber {
       observer: BObserver(o_zip, TypeHint::new()),
       subscription: LocalSubscription::default(),
     }));
-    sub
+    s
   }
 }
 
