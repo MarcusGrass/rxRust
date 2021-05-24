@@ -11,14 +11,19 @@ pub struct TakeOp<S> {
 pub struct TakeOpSubscription<S> {
   pub(crate) source: S,
   pub(crate) count: u128,
-  pub(crate) done: bool,
+  pub(crate) requested: u128,
 }
 
 impl<S> SubscriptionLike for TakeOpSubscription<S> where S: SubscriptionLike {
   fn request(&mut self, requested: u128) {
-    if !self.done {
-      self.source.request(self.count); //TODO: Only request once and enable requesting less at a time
-      self.done = true;
+    if self.requested < self.count {
+      let request = if self.count - self.requested < requested {
+        self.count - self.requested
+      } else {
+        requested
+      };
+      self.source.request(request);
+      self.requested += request;
     }
   }
 
@@ -53,7 +58,7 @@ where
       subscription: subscriber.subscription,
     };
     let source_sub = self.source.actual_subscribe(subscriber);
-    LocalSubscription::new(TakeOpSubscription { source: source_sub, count: self.count as u128, done: false })
+    LocalSubscription::new(TakeOpSubscription { source: source_sub, count: self.count as u128, requested: 0 })
 
     }
 }
@@ -80,7 +85,7 @@ where
     SharedSubscription::new(TakeOpSubscription{
       source: source_sub,
       count: self.count as u128,
-      done: false
+      requested: 0
     })
   }
 }
