@@ -81,6 +81,7 @@ impl LocalScheduler for ManualScheduler {
     task: impl FnMut(usize) + 'static,
     delay: Duration,
     at: Option<Instant>,
+    take: Option<usize>
   ) -> SpawnHandle {
     let handle = SpawnHandle::new(AbortHandle::new_pair().0);
     (*self.repeating_task.write().unwrap()).push(Arc::new(RwLock::new(
@@ -196,6 +197,8 @@ mod tests {
       move |_| *invokes_c.clone().lock().unwrap() += 1,
       delay,
       Some(time.add(Duration::from_millis(5))),
+      None
+      ,
     );
     scheduler.run_tasks();
     assert_eq!(0, *invokes.lock().unwrap());

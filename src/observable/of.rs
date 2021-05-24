@@ -79,7 +79,6 @@ impl<'a, Item: Clone, O> SubscriptionLike for LocalOfPublisher<'a, Item, O>
       O: Observer<Item=Item> + 'a
 {
   fn request(&mut self, _: u128) {
-    println!("{:?}", "req");
     self.1.observer.next(self.0.clone());
     self.1.observer.complete();
   }

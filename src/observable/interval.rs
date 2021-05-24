@@ -43,79 +43,119 @@ impl<S> PublisherFactory for IntervalPublisherFactory<S> {
 }
 
 impl<S> LocalPublisherFactory<'static> for IntervalPublisherFactory<S>
-where S: LocalScheduler
+where S: LocalScheduler + 'static
 {
   fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'static>>) -> LocalSubscription<'static> where
       O: Observer<Item=Self::Item, Err=Self::Err> + 'static
   {
-    let mut observer = subscriber.observer;
-    let requested = Arc::new(RwLock::new(0));
-    let r_c = requested.clone();
-    let handle = self.scheduler.schedule_repeating(
-      move |i| {
-        if *r_c.read().unwrap() > 0 {
-          observer.next(i as u128);
-        }
-      },
-      self.dur,
-      self.at,
-    );
-    LocalSubscription::new(IntervalPublisher {
-      dur: self.dur,
+    LocalSubscription::new(LocalIntervalPublisher {
+      scheduler: self.scheduler,
+      observer: Arc::new(RwLock::new(subscriber.observer)),
+      abort: None,
       at: self.at,
-      requested,
-      abort: handle
+      dur: self.dur
     })
   }
 }
 
 impl<S> SharedPublisherFactory for IntervalPublisherFactory<S>
-where S: SharedScheduler
+where S: SharedScheduler + Send + Sync + 'static
 {
   fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
       O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static
   {
-    let mut observer = subscriber.observer;
-    let requested = Arc::new(RwLock::new(0));
-    let r_c = requested.clone();
-    let handle = self.scheduler.schedule_repeating(
-      move |i| {
-        if *r_c.read().unwrap() > 0 { // TODO: This will by default onBackpressureDrop emissions if none are requested, could cache them instead
-          observer.next(i as u128);
-          *r_c.write().unwrap() -= 1;
-        }
-      },
-      self.dur,
-      self.at,
-    );
-    SharedSubscription::new(IntervalPublisher {
-      dur: self.dur,
+    SharedSubscription::new(SharedIntervalPublisher {
+      scheduler: self.scheduler,
+      observer: Arc::new(RwLock::new(subscriber.observer)),
+      abort: None,
       at: self.at,
-      requested,
-      abort: handle
+      dur: self.dur
     })
   }
 }
 
-struct IntervalPublisher {
-  dur: Duration,
+#[derive(Clone)]
+struct LocalIntervalPublisher<S, O> {
+  scheduler: S,
+  observer: Arc<RwLock<O>>,
+  abort: Option<SpawnHandle>,
   at: Option<Instant>,
-  requested: Arc<RwLock<u128>>,
-  abort: SpawnHandle
+  dur: Duration,
 }
 
 
-impl SubscriptionLike for IntervalPublisher {
+impl<S, O> SubscriptionLike for LocalIntervalPublisher<S, O>
+where S: LocalScheduler, O: Observer<Item=u128> + 'static,
+{
   fn request(&mut self, requested: u128) {
-    *self.requested.write().unwrap() += requested;
+    let o_c = self.observer.clone();
+    let h = self.scheduler.schedule_repeating(
+      move |i| {
+        o_c.write().unwrap().next(i as u128);
+      },
+      self.dur,
+      self.at,
+      Some(requested as usize)
+    );
+    if self.abort.is_some() {
+      self.abort.clone().unwrap().unsubscribe();
+    }
+    self.abort = Some(h);
   }
 
   fn unsubscribe(&mut self) {
-    self.abort.unsubscribe();
+    if self.abort.is_some() {
+      self.abort.clone().unwrap().unsubscribe();
+    }
   }
 
   fn is_closed(&self) -> bool {
-    self.abort.is_closed()
+    if self.abort.is_some() {
+       return self.abort.clone().unwrap().is_closed()
+    }
+    true // TODO: true if not started
+  }
+}
+#[derive(Clone)]
+struct SharedIntervalPublisher<S, O> {
+  scheduler: S,
+  observer: Arc<RwLock<O>>,
+  abort: Option<SpawnHandle>,
+  at: Option<Instant>,
+  dur: Duration,
+}
+
+impl<S, O> SubscriptionLike for SharedIntervalPublisher<S, O>
+  where S: SharedScheduler, O: Observer<Item=u128> + Send + Sync + 'static,
+{
+  fn request(&mut self, requested: u128) {
+    let o_c = self.observer.clone();
+    let h = self.scheduler.schedule_repeating(
+      move |i| {
+        o_c.write().unwrap().next(i as u128);
+      },
+      self.dur,
+      self.at,
+      Some(requested as usize)
+    );
+    if self.abort.is_some() {
+      self.abort.clone().unwrap().unsubscribe();
+    }
+    self.abort = Some(h);
+  }
+
+
+  fn unsubscribe(&mut self) {
+    if self.abort.is_some() {
+      self.abort.clone().unwrap().unsubscribe();
+    }
+  }
+
+  fn is_closed(&self) -> bool {
+    if self.abort.is_some() {
+      return self.abort.clone().unwrap().is_closed()
+    }
+    true // TODO: true if not started
   }
 }
 

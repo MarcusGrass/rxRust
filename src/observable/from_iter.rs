@@ -95,10 +95,10 @@ impl<Iter, O> SubscriptionLike for SharedIterPublisher<Iter, O>
     loop {
       v = it.next();
       if v.is_some() {
-        self.sub.observer.next(v.unwrap());
+        self.sub.next(v.unwrap());
         provided += 1;
       } else {
-        self.sub.observer.complete();
+        self.sub.complete();
         break;
       }
       if provided >= requested {
@@ -128,10 +128,10 @@ impl<'a, Iter, O> SubscriptionLike for LocalIterPublisher<'a, Iter, O>
     loop {
       v = it.next();
       if v.is_some() {
-        self.sub.observer.next(v.unwrap());
+        self.sub.next(v.unwrap());
         provided += 1;
       } else {
-        self.sub.observer.complete();
+        self.sub.complete();
         break;
       }
       if provided >= requested {

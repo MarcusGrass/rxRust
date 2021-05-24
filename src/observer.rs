@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use crate::prelude::Subscriber;
 
 /// An Observer is a consumer of values delivered by an Observable. One for each
 /// type of notification delivered by the Observable: `next`, `error`,
@@ -16,16 +15,6 @@ pub trait Observer {
   fn error(&mut self, err: Self::Err);
   fn complete(&mut self);
   fn is_stopped(&self) -> bool;
-}
-
-pub struct NoBackpressureObserver<O, U, Item, Err> where O: Observer<Item=Item, Err=Err>{
-  pub(crate) observer: O,
-  pub(crate) subscriber: Subscriber<O, U>,
-  pub(crate) overflow_strategy: OverflowStrategy,
-}
-
-pub enum OverflowStrategy {
-  NONE,
 }
 
 #[doc(hidden)]

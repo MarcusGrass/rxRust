@@ -100,11 +100,9 @@ impl<F, S> LocalPublisherFactory<'static> for FuturePublisherFactory<F, S>
         subscriber.observer.complete();
       }
     }));
-    let subscription = LocalSubscription::default();
-    subscription.add(LocalFuturePublisher{
+    LocalSubscription::new(LocalFuturePublisher{
       abort: SpawnHandle::new(handle),
-    });
-    subscription
+    })
   }
 }
 
@@ -122,11 +120,9 @@ impl<F, S> SharedPublisherFactory for FuturePublisherFactory<F, S>
         subscriber.observer.complete();
       }
     }));
-    let subscription = SharedSubscription::default();
-    subscription.add(SharedFuturePublisher{
+    SharedSubscription::new(SharedFuturePublisher{
       abort: SpawnHandle::new(handle),
-    });
-    subscription
+    })
   }
 }
 
@@ -181,13 +177,9 @@ impl<F, S, Item, Error> LocalPublisherFactory<'static> for FutureResultPublisher
     });
     let (future, handle) = futures::future::abortable(f);
     self.scheduler.spawn(future.map(|_| ()));
-    let subscription = LocalSubscription::default();
-    subscription.add(
-      LocalFutureResultPublisher{
-        abort: SpawnHandle::new(handle),
-      }
-    );
-    subscription
+    LocalSubscription::new(LocalFutureResultPublisher{
+      abort: SpawnHandle::new(handle),
+    })
   }
 }
 
@@ -210,13 +202,9 @@ where S: SharedScheduler,
     });
     let (future, handle) = futures::future::abortable(f);
     self.scheduler.spawn(future.map(|_| ()));
-    let subscription = SharedSubscription::default();
-    subscription.add(
-      SharedFutureResultPublisher{
-        abort: SpawnHandle::new(handle),
-      }
-    );
-    subscription
+    SharedSubscription::new(SharedFutureResultPublisher{
+      abort: SpawnHandle::new(handle),
+    })
   }
 }
 
@@ -226,15 +214,15 @@ pub struct LocalFutureResultPublisher {
 }
 
 impl SubscriptionLike for LocalFutureResultPublisher {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, _: u128) {
   }
 
   fn unsubscribe(&mut self) {
-    todo!()
+      self.abort.unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
-    todo!()
+    self.abort.is_closed()
   }
 }
 
@@ -244,15 +232,15 @@ pub struct SharedFutureResultPublisher {
 }
 
 impl SubscriptionLike for SharedFutureResultPublisher {
-  fn request(&mut self, requested: u128) {
+  fn request(&mut self, _: u128) {
   }
 
   fn unsubscribe(&mut self) {
-    todo!()
+    self.abort.unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
-    todo!()
+    self.abort.is_closed()
   }
 }
 

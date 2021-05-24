@@ -31,48 +31,71 @@ impl<'a, F: 'a, Item: 'a, Err: 'a> LocalPublisherFactory<'a> for FnPublisherFact
   fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
       O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
     LocalSubscription::new(LocalFnPublisher{
-      func: move || (self.0)(Subscriber{
-        observer: Box::new(subscriber.observer),
-        subscription: Box::new(subscriber.subscription),
-      })
+      call: CallFunc::Call(
+        || (self.0)(Subscriber {
+          observer: Box::new(subscriber.observer),
+          subscription: Box::new(subscriber.subscription),
+        })
+      )
     })
   }
 }
 
-#[derive(Clone)]
-struct LocalFnPublisher<F> {
-  func: F
+#[derive(Clone, PartialEq)]
+pub enum CallFunc<F> {
+  Noop,
+  Call(F)
 }
 
-impl<F> SubscriptionLike for LocalFnPublisher<F> where F: FnOnce() -> (){
+#[derive(Clone)]
+pub struct LocalFnPublisher<F> {
+  call: CallFunc<F>
+}
+
+impl<F> SubscriptionLike for LocalFnPublisher<F> where F: FnOnce() -> () {
   fn request(&mut self, _: u128) {
+    let n: CallFunc<F> = CallFunc::Noop;
+
+    match std::mem::replace(&mut self.call, n) {
+      CallFunc::Noop => {}
+      CallFunc::Call(f) => (f)()
+    }
   }
 
   fn unsubscribe(&mut self) {
-    todo!()
   }
 
   fn is_closed(&self) -> bool {
-    todo!()
+    match self.call {
+      CallFunc::Noop => true,
+      CallFunc::Call(_) => false
+    }
   }
 }
 
 #[derive(Clone)]
 struct SharedFnPublisher<F> {
-  func: F
+  call: CallFunc<F>,
 }
 
 impl<F> SubscriptionLike for SharedFnPublisher<F> where F: FnOnce() -> (){
   fn request(&mut self, _: u128) {
-    // TODO: (self.func)();
+    let n: CallFunc<F> = CallFunc::Noop;
+
+    match std::mem::replace(&mut self.call, n) {
+      CallFunc::Noop => {}
+      CallFunc::Call(f) => (f)()
+    }
   }
 
   fn unsubscribe(&mut self) {
-    todo!()
   }
 
   fn is_closed(&self) -> bool {
-    todo!()
+    match self.call {
+      CallFunc::Noop => true,
+      CallFunc::Call(_) => false
+    }
   }
 }
 
@@ -83,10 +106,10 @@ impl<F: 'static, Item: 'static, Err: 'static> SharedPublisherFactory for FnPubli
   fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
       O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     SharedSubscription::new(SharedFnPublisher{
-      func: move || (self.0)(Subscriber{
+      call: CallFunc::Call(move || (self.0)(Subscriber{
         observer: Box::new(subscriber.observer),
         subscription: Box::new(subscriber.subscription),
-      })
+      }))
     })
   }
 }

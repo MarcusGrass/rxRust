@@ -75,10 +75,12 @@ where
   Err: Clone + 'a,
 {
   pub fn connect(self) -> S::Unsub {
-    self.source.actual_subscribe(Subscriber {
+    let mut sub = self.source.actual_subscribe(Subscriber {
       observer: self.subject.observers,
       subscription: self.subject.subscription,
-    })
+    });
+    sub.request(self.subject.last_requested);
+    sub
   }
 }
 
@@ -89,10 +91,12 @@ where
   Err: Clone + Send + Sync + 'static,
 {
   pub fn connect(self) -> S::Unsub {
-    self.source.actual_subscribe(Subscriber {
+    let mut sub = self.source.actual_subscribe(Subscriber {
       observer: self.subject.observers,
       subscription: self.subject.subscription,
-    })
+    });
+    sub.request(self.subject.last_requested);
+    sub
   }
 }
 

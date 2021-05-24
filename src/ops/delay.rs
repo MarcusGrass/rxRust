@@ -19,7 +19,7 @@ macro_rules! impl_observable {
     let c_subscription = subscription.clone();
     let handle = scheduler.schedule(
       move |_| {
-        c_subscription.add(source.actual_subscribe($subscriber));
+        c_subscription.add(DelayOpSubscription{source: source.actual_subscribe($subscriber)});
       },
       Some(delay),
       (),
@@ -28,6 +28,26 @@ macro_rules! impl_observable {
     subscription
   }};
 }
+
+pub struct DelayOpSubscription<S> {
+  source: S
+}
+
+impl<S> SubscriptionLike for DelayOpSubscription<S> where S: SubscriptionLike {
+  fn request(&mut self, requested: u128) {
+    self.source.request(requested);
+  }
+
+  fn unsubscribe(&mut self) {
+    self.source.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.source.is_closed()
+  }
+}
+
+
 impl<S, SD> SharedObservable for DelayOp<S, SD>
 where
   S: SharedObservable + Send + Sync + 'static,

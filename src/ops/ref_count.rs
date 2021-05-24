@@ -189,7 +189,7 @@ where
   C: SubscriptionLike,
 {
   fn request(&mut self, requested: u128) {
-    todo!()
+    self.subscription.request(requested);
   }
 
   fn unsubscribe(&mut self) {

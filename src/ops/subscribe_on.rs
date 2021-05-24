@@ -82,7 +82,7 @@ mod test {
     observable::from_iter(1..5)
       .subscribe_on(pool)
       .into_shared()
-      .subscribe(move |v| {
+      .subscribe_blocking(move |v| {
         res.lock().unwrap().push(v);
         let handle = thread::current();
         thread.lock().unwrap().push(handle.id());

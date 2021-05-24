@@ -13,10 +13,12 @@ use std::sync::{Arc, Mutex};
 pub struct Subject<V, S> {
   pub(crate) observers: SubjectObserver<V>,
   pub(crate) subscription: S,
+  pub(crate) last_requested: u128,
 }
 
 impl<O, U: SubscriptionLike> SubscriptionLike for Subject<O, U> {
   fn request(&mut self, requested: u128) {
+    self.last_requested += requested;
   }
 
   #[inline]

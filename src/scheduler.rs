@@ -1,4 +1,3 @@
-use crate::prelude::*;
 use async_std::prelude::FutureExt as AsyncFutureExt;
 use futures::future::{lazy, AbortHandle, FutureExt};
 use std::future::Future;
@@ -6,6 +5,7 @@ use std::future::Future;
 use futures::StreamExt;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
+use crate::prelude::SubscriptionLike;
 
 pub fn task_future<T>(
   task: impl FnOnce(T) + 'static,
@@ -39,8 +39,9 @@ pub trait SharedScheduler {
     task: impl FnMut(usize) + Send + 'static,
     time_between: Duration,
     at: Option<Instant>,
+    take: Option<usize>
   ) -> SpawnHandle {
-    let (f, handle) = repeating_future(task, time_between, at);
+    let (f, handle) = repeating_future(task, time_between, at, take);
     self.spawn(f.map(|_| ()));
     handle
   }
@@ -67,8 +68,9 @@ pub trait LocalScheduler {
     task: impl FnMut(usize) + 'static,
     time_between: Duration,
     at: Option<Instant>,
+    take: Option<usize>
   ) -> SpawnHandle {
-    let (f, handle) = repeating_future(task, time_between, at);
+    let (f, handle) = repeating_future(task, time_between, at, take);
     self.spawn(f.map(|_| ()));
     handle
   }
@@ -91,8 +93,7 @@ impl SpawnHandle {
 }
 
 impl SubscriptionLike for SpawnHandle {
-  fn request(&mut self, requested: u128) {
-    todo!()
+  fn request(&mut self, _: u128) {
   }
 
   fn unsubscribe(&mut self) {
@@ -139,6 +140,7 @@ fn repeating_future(
   task: impl FnMut(usize) + 'static,
   time_between: Duration,
   at: Option<Instant>,
+  take: Option<usize>,
 ) -> (impl Future<Output = ()>, SpawnHandle) {
   let now = Instant::now();
   let delay = at.map(|inst| {
@@ -148,7 +150,7 @@ fn repeating_future(
       Duration::from_micros(0)
     }
   });
-  let future = to_interval(task, time_between, delay.unwrap_or(time_between));
+  let future = to_interval(task, time_between, delay.unwrap_or(time_between), take.unwrap_or(usize::MAX));
   let (fut, handle) = futures::future::abortable(future);
   (fut.map(|_| ()), SpawnHandle::new(handle))
 }
@@ -157,13 +159,16 @@ fn to_interval(
   mut task: impl FnMut(usize) + 'static,
   interval_duration: Duration,
   delay: Duration,
+  take: usize,
 ) -> impl Future<Output = ()> {
   let mut number = 0;
 
   futures::future::ready(())
     .then(move |_| {
       task(number);
-      async_std::stream::interval(interval_duration).for_each(move |_| {
+      async_std::stream::interval(interval_duration)
+          .take(take)
+          .for_each(move |_| {
         number += 1;
         task(number);
         futures::future::ready(())

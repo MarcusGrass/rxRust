@@ -40,6 +40,9 @@ impl<'a> LocalSubscription<'a> {
   pub fn add<S: SubscriptionLike + 'a>(&self, subscription: S) {
     self.0.borrow_mut().add(Box::new(subscription))
   }
+  pub fn proxy<S: SubscriptionLike + 'a>(sub: S) -> Self {
+    Self::new(SubscriptionProxy(sub))
+  }
 
 }
 
@@ -74,6 +77,10 @@ impl SharedSubscription {
     let subscription = SharedSubscription::default();
     subscription.add(sub);
     subscription
+  }
+
+  pub fn proxy<S: SubscriptionLike + Send + Sync + 'static>(sub: S) -> Self {
+    Self::new(SubscriptionProxy(sub))
   }
 
   pub fn add<S: SubscriptionLike + Send + Sync + 'static>(
@@ -279,6 +286,23 @@ impl<T: SubscriptionLike> SubscriptionGuard<T> {
 impl<T: SubscriptionLike> Drop for SubscriptionGuard<T> {
   #[inline]
   fn drop(&mut self) { self.0.unsubscribe() }
+}
+
+#[derive(Clone)]
+pub struct SubscriptionProxy<S>(pub(crate)S);
+
+impl<S> SubscriptionLike for SubscriptionProxy<S> where S: SubscriptionLike {
+  fn request(&mut self, requested: u128) {
+    self.0.request(requested);
+  }
+
+  fn unsubscribe(&mut self) {
+    self.0.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.0.is_closed()
+  }
 }
 
 #[cfg(test)]

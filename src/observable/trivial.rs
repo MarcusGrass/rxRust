@@ -18,7 +18,7 @@ impl<Err> PublisherFactory for ThrowPublisherFactory<Err> {
 }
 
 impl<'a, Err: Clone + 'a> LocalPublisherFactory<'a> for ThrowPublisherFactory<Err> {
-  fn subscribe<O>(self, mut subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
+  fn subscribe<O>(self, subscriber: Subscriber<O, LocalSubscription<'a>>) -> LocalSubscription<'a> where
       O: Observer<Item=Self::Item, Err=Self::Err> + 'a {
     let sub = LocalThrowPublisher{
       err: self.0,
@@ -29,7 +29,7 @@ impl<'a, Err: Clone + 'a> LocalPublisherFactory<'a> for ThrowPublisherFactory<Er
 }
 
 impl<Err: Clone + Send + Sync + 'static> SharedPublisherFactory for ThrowPublisherFactory<Err> {
-  fn subscribe<O>(self, mut subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
+  fn subscribe<O>(self, subscriber: Subscriber<O, SharedSubscription>) -> SharedSubscription where
       O: Observer<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let sub = SharedThrowPublisher{
       err: self.0,
