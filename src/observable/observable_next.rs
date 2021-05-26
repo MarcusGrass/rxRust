@@ -19,7 +19,6 @@ where
   fn error(&mut self, _err: ()) { self.is_stopped = true; }
   #[inline]
   fn complete(&mut self) { self.is_stopped = true; }
-  fn is_stopped(&self) -> bool { self.is_stopped }
 }
 
 pub trait SubscribeNext<'a, N> {

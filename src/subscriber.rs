@@ -1,16 +1,26 @@
 use crate::prelude::*;
+use std::rc::Weak;
+use std::cell::RefCell;
 
 /// Implements the Observer trait and Subscription trait. While the Observer is
 /// the public API for consuming the values of an Observable, all Observers get
 /// converted to a Subscriber, in order to provide Subscription capabilities.
-pub trait Subscription {
-  fn request(&self, requested_items: usize);
+///
+pub trait Sub: Observer + SubscriptionLike {
+  fn on_subscribe(&mut self, sub: &mut dyn SubscriptionLike);
 }
 
 #[derive(Clone)]
 pub struct Subscriber<O, U> {
   pub(crate) observer: O,
   pub(crate) subscription: U,
+}
+
+impl<O, U> Sub for Subscriber<O, U> where O: Observer, U: SubscriptionLike {
+
+  fn on_subscribe(&mut self, sub: &mut U) {
+    self.subscription = sub;
+  }
 }
 
 impl<'a, O> Subscriber<O, LocalSubscription<'a>> {
@@ -55,9 +65,6 @@ where
       self.observer.complete();
     }
   }
-
-  #[inline]
-  fn is_stopped(&self) -> bool { self.observer.is_stopped() }
 }
 
 impl<O, U: SubscriptionLike> SubscriptionLike for Subscriber<O, U> {

@@ -37,8 +37,6 @@ macro_rules! impl_observer {
     #[inline]
     fn complete(&mut self) { self.observers.complete() }
 
-    #[inline]
-    fn is_stopped(&self) -> bool { self.observers.is_stopped() }
   };
 }
 
@@ -125,9 +123,6 @@ where
     observers.clear();
     self.is_stopped = true;
   }
-
-  #[inline]
-  fn is_stopped(&self) -> bool { self.is_stopped }
 }
 
 impl<Item, Err, O> Observer for SubjectObserver<Rc<RefCell<Vec<O>>>>
@@ -172,9 +167,6 @@ where
     observers.clear();
     self.is_stopped = true;
   }
-
-  #[inline]
-  fn is_stopped(&self) -> bool { self.is_stopped }
 }
 
 impl<Item, Err, O> Observer for SubjectObserver<Box<Vec<O>>>
@@ -219,9 +211,6 @@ where
     observers.clear();
     self.is_stopped = true;
   }
-
-  #[inline]
-  fn is_stopped(&self) -> bool { self.is_stopped }
 }
 impl<O, S> Debug for Subject<Arc<Mutex<Vec<O>>>, S> {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

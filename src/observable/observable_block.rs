@@ -34,8 +34,6 @@ where
 
   fn complete(&mut self) { *self.is_stopped.lock().unwrap() = true; }
 
-  #[inline]
-  fn is_stopped(&self) -> bool { *self.is_stopped.lock().unwrap() }
 }
 
 pub trait SubscribeBlocking<'a, N> {

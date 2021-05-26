@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::subscriber::Sub;
 
 pub trait PublisherFactory {
   type Item;
@@ -6,21 +7,21 @@ pub trait PublisherFactory {
 }
 
 pub trait LocalPublisherFactory<'a>: PublisherFactory {
-  fn subscribe<O>(
+  fn subscribe<S>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> LocalSubscription<'a>
+    subscriber: S,
+  )
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'a;
+    S: Sub<Item = Self::Item, Err = Self::Err> + 'a;
 }
 
 pub trait SharedPublisherFactory: PublisherFactory {
-  fn subscribe<O>(
+  fn subscribe<S>(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> SharedSubscription
+    subscriber: S,
+  )
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static;
+    S: Sub<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static;
 }
 
 #[derive(Clone)]

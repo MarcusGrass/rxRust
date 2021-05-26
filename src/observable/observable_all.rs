@@ -43,8 +43,6 @@ where
     self.is_stopped = true;
   }
 
-  #[inline]
-  fn is_stopped(&self) -> bool { self.is_stopped }
 }
 
 pub trait SubscribeAll<'a, N, E, C> {

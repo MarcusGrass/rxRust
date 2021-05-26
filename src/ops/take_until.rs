@@ -134,9 +134,6 @@ where
 
   #[inline]
   fn complete(&mut self) { self.is_stopped = true; }
-
-  #[inline]
-  fn is_stopped(&self) -> bool { self.is_stopped }
 }
 
 #[cfg(test)]

@@ -168,8 +168,6 @@ where
     }
   }
 
-  #[inline]
-  fn is_stopped(&self) -> bool { self.observer.is_stopped() }
 }
 
 impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Rc<RefCell<Option<Target>>>>
@@ -196,8 +194,6 @@ where
     }
   }
 
-  #[inline]
-  fn is_stopped(&self) -> bool { self.observer.is_stopped() }
 }
 
 impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Box<Option<Target>>>
@@ -223,9 +219,6 @@ where
       func()
     }
   }
-
-  #[inline]
-  fn is_stopped(&self) -> bool { self.observer.is_stopped() }
 }
 
 #[cfg(test)]

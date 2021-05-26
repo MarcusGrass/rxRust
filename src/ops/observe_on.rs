@@ -131,8 +131,6 @@ where
   type Err = Err;
   impl_observer!(Item, Err);
 
-  #[inline]
-  fn is_stopped(&self) -> bool { self.observer.lock().unwrap().is_stopped() }
 }
 
 impl<O: 'static, SD: LocalScheduler + 'static> LocalObserver<'static, O, SD> {
@@ -160,9 +158,6 @@ where
   type Item = Item;
   type Err = Err;
   impl_observer!(Item, Err);
-
-  #[inline]
-  fn is_stopped(&self) -> bool { self.observer.borrow().is_stopped() }
 }
 
 #[cfg(test)]

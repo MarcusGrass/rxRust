@@ -23,7 +23,6 @@ where
     (self.complete)();
     self.is_stopped = true;
   }
-  fn is_stopped(&self) -> bool { self.is_stopped }
 }
 
 pub trait SubscribeComplete<'a, N, C> {

@@ -46,8 +46,6 @@ where
     *self.is_stopped.lock().unwrap() = true;
   }
 
-  #[inline]
-  fn is_stopped(&self) -> bool { *self.is_stopped.lock().unwrap() }
 }
 
 pub trait SubscribeBlockingAll<'a, N, E, C> {
