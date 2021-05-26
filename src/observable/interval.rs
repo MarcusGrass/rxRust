@@ -2,6 +2,8 @@ use crate::prelude::*;
 
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
+use crate::subscriber::Sub;
+use std::rc::Rc;
 
 /// Creates an observable which will fire at `dur` time into the future,
 /// and will repeat every `dur` interval after.
@@ -42,45 +44,39 @@ impl<S> PublisherFactory for IntervalPublisherFactory<S> {
   type Err = ();
 }
 
-impl<S> LocalPublisherFactory<'static> for IntervalPublisherFactory<S>
+impl<SD> LocalPublisherFactory<'static> for IntervalPublisherFactory<SD>
 where
-  S: LocalScheduler + 'static,
+    SD: LocalScheduler + 'static,
 {
-  fn subscribe<O>(
-    self,
-    subscriber: Subscriber<O, LocalSubscription<'static>>,
-  ) -> LocalSubscription<'static>
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'static,
-  {
-    LocalSubscription::new(LocalIntervalPublisher {
+
+  fn subscribe<S>(self, subscriber: S) where
+      S: Sub<Item=Self::Item, Err=Self::Err> + 'static {
+    let mut publisher = Rc::new(LocalIntervalPublisher {
       scheduler: self.scheduler,
-      observer: Arc::new(RwLock::new(subscriber.observer)),
+      observer: Arc::new(RwLock::new(subscriber)),
       abort: None,
       at: self.at,
       dur: self.dur,
-    })
+    });
+    publisher.observer.write().unwrap().on_subscribe(Rc::downgrade(&publisher.clone()));
   }
 }
 
-impl<S> SharedPublisherFactory for IntervalPublisherFactory<S>
+impl<SD> SharedPublisherFactory for IntervalPublisherFactory<SD>
 where
-  S: SharedScheduler + Send + Sync + 'static,
+    SD: SharedScheduler + Send + Sync + 'static,
 {
-  fn subscribe<O>(
-    self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> SharedSubscription
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  {
-    SharedSubscription::new(SharedIntervalPublisher {
+
+  fn subscribe<S>(self, subscriber: S) where
+      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    let mut publisher = Rc::new(SharedIntervalPublisher {
       scheduler: self.scheduler,
-      observer: Arc::new(RwLock::new(subscriber.observer)),
+      observer: Arc::new(RwLock::new(subscriber)),
       abort: None,
       at: self.at,
       dur: self.dur,
-    })
+    });
+    publisher.observer.write().unwrap().on_subscribe(Rc::downgrade(&publisher.clone()));
   }
 }
 

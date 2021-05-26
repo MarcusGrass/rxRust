@@ -51,7 +51,8 @@ where
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
   {
-    self.0.subscribe(subscriber)
+    //self.0.subscribe(subscriber)
+    LocalSubscription::default()
   }
 }
 
@@ -67,6 +68,7 @@ where
   where
     O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
   {
-    self.0.subscribe(subscriber)
+    //self.0.subscribe(subscriber)
+    SharedSubscription::default()
   }
 }

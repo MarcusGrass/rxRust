@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::subscriber::Sub;
+use std::rc::Rc;
 
 /// Creates an observable that emits no items, just terminates with an error.
 ///
@@ -22,29 +23,29 @@ impl<'a, Err: Clone + 'a> LocalPublisherFactory<'a> for ThrowPublisherFactory<Er
   fn subscribe<S>(self, subscriber: S) where
       S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
     {
-      let mut publisher = ThrowPublisher {
+      let mut publisher = Rc::new(ThrowPublisher {
         err: self.0,
         sub: subscriber,
-      };
+      });
+      let pub_c = Rc::clone(&publisher);
 
-      publisher.sub.on_subscribe(&mut publisher);
+      publisher.sub.on_subscribe(Rc::downgrade(&pub_c));
     }
   }
 }
-/*
-
- */
 
 impl<Err: Clone + Send + Sync + 'static> SharedPublisherFactory
   for ThrowPublisherFactory<Err>
 {
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
-    let mut sub = ThrowPublisher {
+    let mut publisher = Rc::new(ThrowPublisher {
       err: self.0,
       sub: subscriber,
-    };
-    sub.sub.on_subscribe(&mut sub);
+    });
+    let pub_c = Rc::clone(&publisher);
+
+    publisher.sub.on_subscribe(Rc::downgrade(&pub_c));
   }
 }
 
@@ -54,7 +55,7 @@ struct ThrowPublisher<Err, S> {
   sub: S,
 }
 
-impl<'a, Err: Clone, S> SubscriptionLike for ThrowPublisher<Err, S>
+impl<Err: Clone, S> SubscriptionLike for ThrowPublisher<Err, S>
 where
   S: Sub<Err=Err>
 {
@@ -107,17 +108,19 @@ where
 }
 
 impl<'a, Item> LocalPublisherFactory<'a> for EmptyPublisherFactory<Item> {
-  fn subscribe<S>(self, subscriber: S) -> LocalSubscription<'a> where
+  fn subscribe<S>(self, subscriber: S) where
       S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
-    LocalSubscription::new(EmptyPublisher(subscriber))
+    let mut publisher = Rc::new(EmptyPublisher(subscriber));
+    publisher.0.on_subscribe(Rc::downgrade(&publisher.clone()));
   }
 }
 
 
 impl<Item> SharedPublisherFactory for EmptyPublisherFactory<Item> {
-  fn subscribe<S>(self, subscriber: S) -> SharedSubscription where
+  fn subscribe<S>(self, subscriber: S) where
       S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
-    SharedSubscription::new(EmptyPublisher(subscriber))
+    let mut publisher = Rc::new(EmptyPublisher(subscriber));
+    publisher.0.on_subscribe(Rc::downgrade(&publisher.clone()));
   }
 }
 /// Creates an observable that never emits anything.
@@ -139,16 +142,14 @@ impl PublisherFactory for NeverEmitterPublisherFactory {
 }
 
 impl<'a> LocalPublisherFactory<'a> for NeverEmitterPublisherFactory {
-  fn subscribe<S>(self, subscriber: S) -> LocalSubscription<'a> where
+  fn subscribe<S>(self, _subscriber: S) where
       S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
-    LocalSubscription::new(subscriber)
   }
 }
 
 impl SharedPublisherFactory for NeverEmitterPublisherFactory {
-  fn subscribe<S>(self, subscriber: S) -> SharedSubscription where
-      S: Sub<Upstream=SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
-    SharedSubscription::new(subscriber)
+  fn subscribe<S>(self, _subscriber: S) where
+      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
   }
 }
 

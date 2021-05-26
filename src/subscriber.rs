@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::rc::Weak;
+use std::rc::{Weak, Rc};
 use std::cell::RefCell;
 
 /// Implements the Observer trait and Subscription trait. While the Observer is
@@ -7,20 +7,19 @@ use std::cell::RefCell;
 /// converted to a Subscriber, in order to provide Subscription capabilities.
 ///
 pub trait Sub: Observer + SubscriptionLike {
-  fn on_subscribe(&mut self, sub: &mut dyn SubscriptionLike);
+  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>);
+}
+
+impl<P> Sub for Rc<RefCell<P>> where P: Sub {
+  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>) {
+    self.borrow().on_subscribe(sub)
+  }
 }
 
 #[derive(Clone)]
 pub struct Subscriber<O, U> {
   pub(crate) observer: O,
   pub(crate) subscription: U,
-}
-
-impl<O, U> Sub for Subscriber<O, U> where O: Observer, U: SubscriptionLike {
-
-  fn on_subscribe(&mut self, sub: &mut U) {
-    self.subscription = sub;
-  }
 }
 
 impl<'a, O> Subscriber<O, LocalSubscription<'a>> {

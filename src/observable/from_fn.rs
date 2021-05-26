@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::subscriber::Sub;
 
 /// param `subscribe`: the function that is called when the Observable is
 /// initially subscribed to. This function is given a Subscriber, to which
@@ -34,21 +35,10 @@ where
     >,
   ),
 {
-  fn subscribe<O>(
-    self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> LocalSubscription<'a>
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
-  {
-    LocalSubscription::new(LocalFnPublisher {
-      call: CallFunc::Call(|| {
-        (self.0)(Subscriber {
-          observer: Box::new(subscriber.observer),
-          subscription: Box::new(subscriber.subscription),
-        })
-      }),
-    })
+
+  fn subscribe<S>(self, subscriber: S) where
+      S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
+    todo!()
   }
 }
 
@@ -125,21 +115,9 @@ where
     ) + Send
     + Sync,
 {
-  fn subscribe<O>(
-    self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> SharedSubscription
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  {
-    SharedSubscription::new(SharedFnPublisher {
-      call: CallFunc::Call(move || {
-        (self.0)(Subscriber {
-          observer: Box::new(subscriber.observer),
-          subscription: Box::new(subscriber.subscription),
-        })
-      }),
-    })
+  fn subscribe<S>(self, subscriber: S) where
+      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    todo!()
   }
 }
 

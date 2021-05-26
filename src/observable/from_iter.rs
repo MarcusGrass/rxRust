@@ -1,6 +1,8 @@
 use crate::prelude::*;
 use std::iter::{Repeat, Take};
 use crate::subscriber::Sub;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /// Creates an observable that produces values from an iterator.
 ///
@@ -58,14 +60,14 @@ impl<'a, Iter> LocalPublisherFactory<'a> for IterPublisherFactory<Iter>
 where Iter: IntoIterator + Clone + 'a
 {
 
-  fn subscribe<S>(self, subscriber: S) -> LocalSubscription<'a> where
-      S: Sub<Upstream=LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a {
-    let publisher = IterPublisher {
+  fn subscribe<S>(self, subscriber: S)  where
+      S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
+    let mut publisher = Rc::new(IterPublisher {
       it: self.0,
       sub: subscriber,
       cursor: 0,
-    };
-    LocalSubscription::new(publisher)
+    });
+    publisher.sub.on_subscribe(Rc::downgrade(&publisher.clone()))
   }
 }
 
@@ -73,14 +75,14 @@ impl<Iter> SharedPublisherFactory for IterPublisherFactory<Iter>
 where
   Iter: IntoIterator + Send + Sync + Clone + 'static,
 {
-  fn subscribe<S>(self, mut subscriber: S) -> SharedSubscription where
-      S: Sub<Upstream=SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
-    let mut publisher = IterPublisher {
+  fn subscribe<S>(self, mut subscriber: S) where
+      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    let mut publisher = Rc::new(IterPublisher {
       it: self.0,
       sub: subscriber,
       cursor: 0,
-    };
-    publisher.sub.on_subscribe(SharedSubscription::new(publisher));
+    });
+    publisher.sub.on_subscribe(Rc::downgrade(&publisher.clone()))
   }
 }
 
