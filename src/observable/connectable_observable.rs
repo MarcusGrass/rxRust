@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::subject::{LocalSubject, SharedSubject};
+use crate::subscriber::Subscriber;
 use ops::ref_count::{RefCount, RefCountCreator};
 
 #[derive(Clone, Default)]
@@ -27,13 +28,12 @@ pub type SharedConnectableObservable<S, Item, Err> =
 #[doc(hidden)]
 macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  type Unsub = $subscription;
   #[inline(always)]
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item, Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item, Err= Self::Err> + $($marker +)* $lf {
     self.subject.actual_subscribe(subscriber)
   }
 }
@@ -49,7 +49,6 @@ where
 
 impl<S, Item, Err> SharedObservable for SharedConnectableObservable<S, Item, Err>
 where
-  S: SharedObservable<Item = Item, Err = Err>,
   S: SharedObservable<Item = Item, Err = Err>,
 {
   observable_impl!(SharedSubscription, Send + Sync + 'static);
@@ -73,13 +72,15 @@ where
   Item: Clone + 'a,
   Err: Clone + 'a,
 {
-  pub fn connect(self) -> S::Unsub {
+  pub fn connect(self) {
+    /*
     let mut sub = self.source.actual_subscribe(Subscriber {
       observer: self.subject.observers,
       subscription: self.subject.subscription,
     });
     sub.request(self.subject.last_requested);
-    sub
+
+     */
   }
 }
 
@@ -89,13 +90,15 @@ where
   Item: Clone + Send + Sync + 'static,
   Err: Clone + Send + Sync + 'static,
 {
-  pub fn connect(self) -> S::Unsub {
+  pub fn connect(self) {
+    /*
     let mut sub = self.source.actual_subscribe(Subscriber {
       observer: self.subject.observers,
       subscription: self.subject.subscription,
     });
     sub.request(self.subject.last_requested);
-    sub
+
+     */
   }
 }
 

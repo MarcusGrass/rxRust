@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl};
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct ScanOp<Source, BinaryOp, OutputItem> {
@@ -20,9 +21,10 @@ macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    /*
     self.source_observable.actual_subscribe(Subscriber {
       observer: ScanObserver {
         target_observer: subscriber.observer,
@@ -32,6 +34,8 @@ macro_rules! observable_impl {
       },
       subscription: subscriber.subscription,
     })
+
+     */
   }
 }
 }
@@ -60,7 +64,6 @@ where
   BinaryOp: FnMut(OutputItem, Source::Item) -> OutputItem + 'a,
   Source::Item: 'a,
 {
-  type Unsub = Source::Unsub;
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
@@ -72,7 +75,6 @@ where
   Source::Item: 'static,
   BinaryOp: FnMut(OutputItem, Source::Item) -> OutputItem + Send + Sync + 'static,
 {
-  type Unsub = Source::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 

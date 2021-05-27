@@ -77,6 +77,7 @@ use ops::{
 };
 use std::ops::{Add, Mul};
 use std::time::{Duration, Instant};
+use crate::subscriber::Subscriber;
 
 type ALLOp<O, F> = DefaultIfEmptyOp<TakeOp<FilterOp<MapOp<O, F>, fn(&bool) -> bool>>>;
 
@@ -1147,11 +1148,10 @@ pub trait Observable: Sized {
 }
 
 pub trait LocalObservable<'a>: Observable {
-  type Unsub: SubscriptionLike + 'a;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<S: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub;
+    subscriber: S,
+  );
 }
 
 #[macro_export]

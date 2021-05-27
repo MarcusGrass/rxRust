@@ -5,10 +5,7 @@ pub trait BoxObservable<'a> {
   type Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Subscriber<
-      Box<dyn Observer<Item = Self::Item, Err = Self::Err> + 'a>,
-      LocalSubscription<'a>,
-    >,
+    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + 'a>,
   ) -> Box<dyn SubscriptionLike + 'a>;
 }
 
@@ -17,10 +14,7 @@ pub trait SharedBoxObservable {
   type Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Subscriber<
-      Box<dyn Observer<Item = Self::Item, Err = Self::Err> + Send + Sync>,
-      SharedSubscription,
-    >,
+    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync>,
   ) -> Box<dyn SubscriptionLike + Send + Sync>;
 }
 
@@ -31,10 +25,7 @@ macro_rules! box_observable_impl {
   type Err = $source::Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Subscriber<
-      Box<dyn Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf>,
-      $subscription,
-    >,
+    subscriber: Box<dyn Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf>,
   ) -> Box<dyn SubscriptionLike + $($marker +)*>  {
     Box::new(self.actual_subscribe(subscriber))
   }
@@ -49,10 +40,7 @@ where
   type Err = T::Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Subscriber<
-      Box<dyn Observer<Item = Self::Item, Err = Self::Err> + 'a>,
-      LocalSubscription<'a>,
-    >,
+    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + 'a>,
   ) -> Box<dyn SubscriptionLike + 'a> {
     Box::new(self.actual_subscribe(subscriber))
   }
@@ -61,7 +49,6 @@ where
 impl<T> SharedBoxObservable for T
 where
   T: SharedObservable,
-  T::Unsub: Send + Sync,
   T::Item: Send + Sync + 'static,
   T::Err: Send + Sync + 'static,
 {
@@ -89,13 +76,10 @@ macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
+    subscriber: O,
+  )
   where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
-    self.0.box_subscribe(Subscriber {
-      observer: Box::new(subscriber.observer),
-      subscription: subscriber.subscription,
-    })
+    self.0.box_subscribe(subscriber)
   }
 }
 }
@@ -105,7 +89,6 @@ impl<'a, Item, Err> Observable for LocalBoxOp<'a, Item, Err> {
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalBoxOp<'a, Item, Err> {
-  type Unsub = Box<dyn SubscriptionLike + 'a>;
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
@@ -115,7 +98,6 @@ impl<Item, Err> Observable for SharedBoxOp<Item, Err> {
 }
 
 impl<Item, Err> SharedObservable for SharedBoxOp<Item, Err> {
-  type Unsub = Box<dyn SubscriptionLike + Send + Sync>;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 
@@ -124,7 +106,6 @@ impl<'a, Item, Err> Observable for LocalCloneBoxOp<'a, Item, Err> {
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalCloneBoxOp<'a, Item, Err> {
-  type Unsub = Box<dyn SubscriptionLike + 'a>;
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
@@ -133,7 +114,6 @@ impl<Item, Err> Observable for SharedCloneBoxOp<Item, Err> {
   type Err = Err;
 }
 impl<Item, Err> SharedObservable for SharedCloneBoxOp<Item, Err> {
-  type Unsub = Box<dyn SubscriptionLike + Send + Sync>;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 
@@ -159,7 +139,6 @@ where
   T: SharedObservable + Send + Sync + 'static,
   T::Item: Send + Sync + 'static,
   T::Err: Send + Sync + 'static,
-  T::Unsub: Send + Sync,
 {
   fn box_it(origin: T) -> BoxOp<Self> { BoxOp(Box::new(origin)) }
 }

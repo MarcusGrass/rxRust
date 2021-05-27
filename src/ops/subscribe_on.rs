@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::scheduler::SharedScheduler;
+use crate::subscriber::Subscriber;
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
@@ -14,15 +15,13 @@ impl<'a, S, SD> SharedObservable for SubscribeOnOP<S, SD>
 where
   S: SharedObservable + Send + 'static,
   SD: SharedScheduler + Send + 'static,
-  S::Unsub: Send + Sync,
 {
-  type Unsub = SharedSubscription;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let source = self.source;
     let subscription = subscriber.subscription.clone();
     let req = Arc::new(RwLock::new(0));
@@ -45,7 +44,7 @@ where
       handle,
       req,
       started: false,
-    })
+    });
   }
 }
 
@@ -80,11 +79,10 @@ where
   S: LocalObservable<'static> + 'static,
   SD: LocalScheduler,
 {
-  type Unsub = LocalSubscription<'static>;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'static>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let source = self.source;
     let subscription = subscriber.subscription.clone();
     let handle = self.scheduler.schedule(
@@ -96,7 +94,6 @@ where
       (),
     );
     subscription.add(handle);
-    subscription
   }
 }
 

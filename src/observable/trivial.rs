@@ -1,6 +1,6 @@
 use crate::prelude::*;
-use crate::subscriber::Sub;
-use std::rc::Rc;
+use crate::subscriber::Subscriber;
+use std::sync::Arc;
 
 /// Creates an observable that emits no items, just terminates with an error.
 ///
@@ -21,15 +21,15 @@ impl<Err> PublisherFactory for ThrowPublisherFactory<Err> {
 
 impl<'a, Err: Clone + 'a> LocalPublisherFactory<'a> for ThrowPublisherFactory<Err> {
   fn subscribe<S>(self, subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
     {
-      let mut publisher = Rc::new(ThrowPublisher {
+      let mut publisher = Arc::new(ThrowPublisher {
         err: self.0,
         sub: subscriber,
       });
-      let pub_c = Rc::clone(&publisher);
+      let pub_c = Arc::clone(&publisher);
 
-      publisher.sub.on_subscribe(Rc::downgrade(&pub_c));
+      publisher.sub.on_subscribe(Arc::downgrade(&pub_c));
     }
   }
 }
@@ -38,14 +38,14 @@ impl<Err: Clone + Send + Sync + 'static> SharedPublisherFactory
   for ThrowPublisherFactory<Err>
 {
   fn subscribe<S>(self, mut subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
-    let mut publisher = Rc::new(ThrowPublisher {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    let mut publisher = Arc::new(ThrowPublisher {
       err: self.0,
       sub: subscriber,
     });
-    let pub_c = Rc::clone(&publisher);
+    let pub_c = Arc::clone(&publisher);
 
-    publisher.sub.on_subscribe(Rc::downgrade(&pub_c));
+    publisher.sub.on_subscribe(Arc::downgrade(&pub_c));
   }
 }
 
@@ -57,7 +57,7 @@ struct ThrowPublisher<Err, S> {
 
 impl<Err: Clone, S> SubscriptionLike for ThrowPublisher<Err, S>
 where
-  S: Sub<Err=Err>
+  S: Subscriber<Err=Err>
 {
   fn request(&mut self, _: usize) { self.sub.error(self.err.clone()); }
 
@@ -98,7 +98,7 @@ struct EmptyPublisher<S>(S);
 
 impl<S> SubscriptionLike for EmptyPublisher<S>
 where
-  S: Sub
+  S: Subscriber
 {
   fn request(&mut self, _: usize) { self.0.complete(); }
 
@@ -109,18 +109,18 @@ where
 
 impl<'a, Item> LocalPublisherFactory<'a> for EmptyPublisherFactory<Item> {
   fn subscribe<S>(self, subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
-    let mut publisher = Rc::new(EmptyPublisher(subscriber));
-    publisher.0.on_subscribe(Rc::downgrade(&publisher.clone()));
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
+    let mut publisher = Arc::new(EmptyPublisher(subscriber));
+    publisher.0.on_subscribe(Arc::downgrade(&publisher.clone()));
   }
 }
 
 
 impl<Item> SharedPublisherFactory for EmptyPublisherFactory<Item> {
   fn subscribe<S>(self, subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
-    let mut publisher = Rc::new(EmptyPublisher(subscriber));
-    publisher.0.on_subscribe(Rc::downgrade(&publisher.clone()));
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    let mut publisher = Arc::new(EmptyPublisher(subscriber));
+    publisher.0.on_subscribe(Arc::downgrade(&publisher.clone()));
   }
 }
 /// Creates an observable that never emits anything.
@@ -143,13 +143,13 @@ impl PublisherFactory for NeverEmitterPublisherFactory {
 
 impl<'a> LocalPublisherFactory<'a> for NeverEmitterPublisherFactory {
   fn subscribe<S>(self, _subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
   }
 }
 
 impl SharedPublisherFactory for NeverEmitterPublisherFactory {
   fn subscribe<S>(self, _subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
   }
 }
 

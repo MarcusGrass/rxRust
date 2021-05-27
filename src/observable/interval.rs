@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
-use crate::subscriber::Sub;
+use crate::subscriber::Subscriber;
 use std::rc::Rc;
 
 /// Creates an observable which will fire at `dur` time into the future,
@@ -50,7 +50,7 @@ where
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + 'static {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'static {
     let mut publisher = Rc::new(LocalIntervalPublisher {
       scheduler: self.scheduler,
       observer: Arc::new(RwLock::new(subscriber)),
@@ -68,7 +68,7 @@ where
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let mut publisher = Rc::new(SharedIntervalPublisher {
       scheduler: self.scheduler,
       observer: Arc::new(RwLock::new(subscriber)),

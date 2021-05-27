@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{error_proxy_impl};
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct DefaultIfEmptyOp<S>
@@ -16,10 +17,10 @@ macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
-    let subscriber = Subscriber {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    /*let subscriber = Subscriber {
       observer: DefaultIfEmptyObserver {
         observer: subscriber.observer,
         is_empty: self.is_empty,
@@ -27,7 +28,7 @@ macro_rules! observable_impl {
       },
       subscription: subscriber.subscription,
     };
-    self.source.actual_subscribe(subscriber)
+    self.source.actual_subscribe(subscriber)*/
   }
 }
 }
@@ -39,7 +40,6 @@ where
   S: LocalObservable<'a>,
   S::Item: Clone + 'a,
 {
-  type Unsub = S::Unsub;
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
@@ -48,7 +48,6 @@ where
   S: SharedObservable,
   S::Item: Clone + Send + Sync + 'static,
 {
-  type Unsub = S::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 

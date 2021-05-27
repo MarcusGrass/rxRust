@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::subscriber::Subscriber;
 
 type RcPublishers<'a, P> = Rc<RefCell<Vec<Box<P>>>>;
 type _LocalSubject<'a, P> = Subject<RcPublishers<'a, P>, LocalSubscription<'a>>;
@@ -35,11 +36,10 @@ impl<'a, Item, Err> Observable for LocalSubject<'a, Item, Err> {
 }
 
 impl<'a, Item, Err> LocalObservable<'a> for LocalSubject<'a, Item, Err> {
-  type Unsub = LocalSubscription<'a>;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> LocalSubscription {
+    subscriber: O,
+  ) {
     let subscription = subscriber.subscription.clone();
     self.subscription.add(subscription.clone());
     self

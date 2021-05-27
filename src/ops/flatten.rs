@@ -3,6 +3,7 @@ use crate::{complete_proxy_impl, error_proxy_impl};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use crate::subscriber::Subscriber;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -252,7 +253,7 @@ pub struct FlattenSharedOuterObserver<Inner, O> {
 impl<Inner, O, Item, Err> Observer for FlattenSharedOuterObserver<Inner, O>
 where
   O: Observer<Item = Item, Err = Err> + Sync + Send + 'static,
-  Inner: SharedObservable<Item = Item, Err = Err, Unsub = SharedSubscription>,
+  Inner: SharedObservable<Item = Item, Err = Err>,
 {
   type Item = Inner;
   type Err = Err;
@@ -263,12 +264,15 @@ where
     let mut state = self.state.lock().unwrap();
     state.register_new_observable();
     drop(state);
+    /*
     let mut subscription = value.actual_subscribe(Subscriber {
       observer: self.inner_observer.clone(),
       subscription: SharedSubscription::default(),
     });
     subscription.request(usize::MAX); // TODO: Propagate requested from inner
     self.subscription.add(subscription);
+
+     */
   }
 
   error_proxy_impl!(Err, inner_observer);
@@ -280,20 +284,18 @@ where
 impl<Outer, Inner, Item, Err> SharedObservable for FlattenOp<Outer, Inner>
 where
   Outer: SharedObservable<Item = Inner, Err = Err>,
-  Outer::Unsub: Send + Sync,
-  Inner: SharedObservable<Item = Item, Err = Err, Unsub = SharedSubscription>
+  Inner: SharedObservable<Item = Item, Err = Err>
     + Send
     + Sync
     + 'static,
 {
-  type Unsub = SharedSubscription;
 
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub
+    subscriber: O,
+  )
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   {
     let state = Arc::new(Mutex::new(FlattenState::new()));
 
@@ -312,7 +314,7 @@ where
       state,
     };
 
-    SharedSubscription::new(self.source.actual_subscribe(Subscriber::shared(observer)))
+    SharedSubscription::new(self.source.actual_subscribe(Subscriber::shared(observer)));
   }
 }
 
@@ -335,7 +337,7 @@ pub struct FlattenLocalOuterObserver<'a, Inner, O> {
 impl<'a, Inner, O, Item, Err> Observer for FlattenLocalOuterObserver<'a, Inner, O>
 where
   O: Observer<Item = Item, Err = Err> + 'a,
-  Inner: LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription<'a>>,
+  Inner: LocalObservable<'a, Item = Item, Err = Err>,
 {
   type Item = Inner;
   type Err = Err;
@@ -358,16 +360,15 @@ where
 impl<'a, Outer, Inner, Item, Err> LocalObservable<'a> for FlattenOp<Outer, Inner>
 where
   Outer: LocalObservable<'a, Item = Inner, Err = Err>,
-  Inner: LocalObservable<'a, Item = Item, Err = Err, Unsub = LocalSubscription<'a>> + 'a,
+  Inner: LocalObservable<'a, Item = Item, Err = Err> + 'a,
 {
-  type Unsub = LocalSubscription<'a>;
 
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub
+    subscriber: O,
+  )
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a,
   {
     let state = Rc::new(RefCell::new(FlattenState::new()));
 
@@ -386,7 +387,7 @@ where
       state,
     };
 
-    LocalSubscription::new(self.source.actual_subscribe(Subscriber::local(observer)))
+    LocalSubscription::new(self.source.actual_subscribe(Subscriber::local(observer)));
   }
 }
 

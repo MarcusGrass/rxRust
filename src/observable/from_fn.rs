@@ -1,18 +1,17 @@
 use crate::prelude::*;
-use crate::subscriber::Sub;
+use crate::subscriber::Subscriber;
 
 /// param `subscribe`: the function that is called when the Observable is
 /// initially subscribed to. This function is given a Subscriber, to which
 /// new values can be `next`ed, or an `error` method can be called to raise
 /// an error, or `complete` can be called to notify of a successful
 /// completion.
-pub fn create<F, O, U, Item, Err>(
+pub fn create<F, O, Item, Err>(
   subscribe: F,
 ) -> ObservableBase<FnPublisherFactory<F, Item, Err>>
 where
-  F: FnOnce(Subscriber<O, U>),
-  O: Observer<Item = Item, Err = Err>,
-  U: SubscriptionLike,
+  F: FnOnce(O),
+  O: Subscriber<Item = Item, Err = Err>,
 {
   ObservableBase::new(FnPublisherFactory(subscribe, TypeHint::new()))
 }
@@ -28,16 +27,11 @@ impl<F, Item, Err> PublisherFactory for FnPublisherFactory<F, Item, Err> {
 impl<'a, F: 'a, Item: 'a, Err: 'a> LocalPublisherFactory<'a>
   for FnPublisherFactory<F, Item, Err>
 where
-  F: FnOnce(
-    Subscriber<
-      Box<dyn Observer<Item = Item, Err = Err> + 'a>,
-      Box<dyn SubscriptionLike + 'a>,
-    >,
-  ),
+  F: FnOnce(Box<dyn Subscriber<Item = Item, Err = Err> + 'a>),
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + 'a {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
     todo!()
   }
 }
@@ -107,16 +101,10 @@ where
 impl<F: 'static, Item: 'static, Err: 'static> SharedPublisherFactory
   for FnPublisherFactory<F, Item, Err>
 where
-  F: FnOnce(
-      Subscriber<
-        Box<dyn Observer<Item = Item, Err = Err> + 'static>,
-        Box<dyn SubscriptionLike + 'static>,
-      >,
-    ) + Send
-    + Sync,
+    F: FnOnce(Box<dyn Subscriber<Item = Item, Err = Err> + 'static>) + Send + Sync,
 {
   fn subscribe<S>(self, subscriber: S) where
-      S: Sub<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     todo!()
   }
 }

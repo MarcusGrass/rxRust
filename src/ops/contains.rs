@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{error_proxy_impl};
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct ContainsOp<S, Item> {
@@ -20,9 +21,10 @@ macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=bool,Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=bool,Err= Self::Err> + $($marker +)* $lf {
+    /*
     let subscriber = Subscriber {
       observer: ContainsObserver{
         observer: subscriber.observer,
@@ -32,6 +34,8 @@ macro_rules! observable_impl {
       subscription: subscriber.subscription,
     };
     self.source.actual_subscribe(subscriber)
+
+     */
   }
 }
 }
@@ -41,7 +45,6 @@ where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Clone + Eq,
 {
-  type Unsub = S::Unsub;
   observable_impl!(LocalSubscription<'a>,'a);
 }
 
@@ -50,7 +53,6 @@ where
   S: SharedObservable<Item = Item>,
   Item: Send + Sync + 'static + Clone + Eq,
 {
-  type Unsub = S::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 

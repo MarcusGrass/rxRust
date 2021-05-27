@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use crate::subscriber::Subscriber;
 
 /// An Observable that combines from two other two Observables.
 ///
@@ -31,12 +32,11 @@ where
   A::Item: 'a,
   B::Item: 'a,
 {
-  type Unsub = LocalSubscription<'a>;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub {
-    let sub = subscriber.subscription;
+    subscriber: O,
+  ) {
+    /*let sub = subscriber.subscription;
     let o_zip = ZipObserver::new(subscriber.observer, sub.clone());
     let o_zip = Rc::new(RefCell::new(o_zip));
     let s = LocalSubscription::default();
@@ -48,8 +48,7 @@ where
     s.add(self.b.actual_subscribe(Subscriber {
       observer: BObserver(o_zip, TypeHint::new()),
       subscription: LocalSubscription::default(),
-    }));
-    s
+    }));*/
   }
 }
 
@@ -59,17 +58,14 @@ where
   B: SharedObservable<Err = A::Err>,
   A::Item: Send + Sync + 'static,
   B::Item: Send + Sync + 'static,
-  A::Unsub: Send + Sync,
-  B::Unsub: Send + Sync,
 {
-  type Unsub = SharedSubscription;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
-    let sub = subscriber.subscription;
+    subscriber: O,
+  ) {
+    /*let sub = subscriber.subscription;
     let o_zip = ZipObserver::new(subscriber.observer, sub.clone());
     let o_zip = Arc::new(Mutex::new(o_zip));
     sub.add(self.a.actual_subscribe(Subscriber {
@@ -80,8 +76,7 @@ where
     sub.add(self.b.actual_subscribe(Subscriber {
       observer: BObserver(o_zip, TypeHint::new()),
       subscription: SharedSubscription::default(),
-    }));
-    sub
+    }));*/
   }
 }
 

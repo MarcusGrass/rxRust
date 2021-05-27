@@ -1,29 +1,49 @@
 #![cfg(test)]
 use crate::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::sync::{Weak, Arc, Mutex, RwLock};
 use std::time::Duration;
+use std::cell::RefCell;
 
 #[derive(Clone)]
-pub struct ObserverBlock<N, Item> {
+pub struct ObserverBlock<N, S, Item> {
   next: N,
   is_stopped: Arc<Mutex<bool>>,
-  marker: TypeHint<*const Item>,
+  upstream: Arc<RwLock<Weak<S>>>,
+  marker: TypeHint<(*const Item, S)>,
 }
+impl<Item, Sub, N> Subscriber for ObserverBlock<N, Sub, Item>
+  where
+      N: FnMut(Item),
+      Sub: SubscriptionLike,
+{
 
-impl<Item, N> ObserverBlock<N, Item> {
-  #[inline(always)]
-  pub fn new(next: N) -> Self {
-    ObserverBlock {
-      next,
-      is_stopped: Arc::new(Mutex::new(false)),
-      marker: TypeHint::new(),
-    }
+  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>) {
+    *self.upstream.write().unwrap() = sub;
   }
 }
 
-impl<Item, N> Observer for ObserverBlock<N, Item>
+impl<Item, S, N> SubscriptionLike for ObserverBlock<N, S, Item>
+  where
+      N: FnMut(Item),
+      S: SubscriptionLike,
+{
+  fn request(&mut self, requested: usize) {
+
+  }
+
+  fn unsubscribe(&mut self) {
+    self.upstream.write().unwrap().upgrade().unwrap().unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
+}
+
+impl<Item, S, N> Observer for ObserverBlock<N, S, Item>
 where
   N: FnMut(Item),
+  S: SubscriptionLike,
 {
   type Item = Item;
   type Err = ();
@@ -64,24 +84,26 @@ where
   N: FnMut(S::Item) + Send + Sync + 'static,
   S::Item: 'static,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
+
   fn subscribe_blocking(self, next: N) -> SubscriptionWrapper<Self::Unsub>
   where
     Self: Sized,
   {
     let stopped = Arc::new(Mutex::new(false));
     let stopped_c = Arc::clone(&stopped);
-    let subscriber = Subscriber::shared(ObserverBlock {
+    let arc: Arc<RwLock<Weak<dyn SubscriptionLike>>> = Arc::new(RwLock::new(Weak::new()));
+    let subscriber = ObserverBlock {
       next,
       is_stopped: stopped,
+      upstream: arc,
       marker: TypeHint::new(),
-    });
-    let mut sub = self.actual_subscribe(subscriber);
-    sub.request(usize::MAX);
+    };
+    self.actual_subscribe(subscriber);
     while !*stopped_c.lock().unwrap() {
       std::thread::sleep(Duration::from_millis(1))
     }
-    SubscriptionWrapper(sub)
+    SubscriptionWrapper(SharedSubscription::default())
   }
 }
 

@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl};
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct TakeOp<S> {
@@ -43,14 +44,14 @@ impl<'a, S> LocalObservable<'a> for TakeOp<S>
 where
   S: LocalObservable<'a>,
 {
-  type Unsub = LocalSubscription<'a>;
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub
+    subscriber: O,
+  )
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a,
   {
+    /*
     let subscriber = Subscriber {
       observer: TakeObserver {
         observer: subscriber.observer,
@@ -64,7 +65,9 @@ where
       source: source_sub,
       count: self.count,
       requested: 0,
-    })
+    });
+
+     */
   }
 }
 
@@ -72,14 +75,14 @@ impl<S> SharedObservable for TakeOp<S>
 where
   S: SharedObservable,
 {
-  type Unsub = SharedSubscription;
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub
+    subscriber: O,
+  )
   where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
   {
+    /*
     let subscriber = Subscriber {
       observer: TakeObserver {
         observer: subscriber.observer,
@@ -93,7 +96,9 @@ where
       source: source_sub,
       count: self.count,
       requested: 0,
-    })
+    });
+
+     */
   }
 }
 

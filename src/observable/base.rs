@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::subscriber::Sub;
+use crate::subscriber::Subscriber;
 
 pub trait PublisherFactory {
   type Item;
@@ -12,7 +12,7 @@ pub trait LocalPublisherFactory<'a>: PublisherFactory {
     subscriber: S,
   )
   where
-    S: Sub<Item = Self::Item, Err = Self::Err> + 'a;
+    S: Subscriber<Item = Self::Item, Err = Self::Err> + 'a;
 }
 
 pub trait SharedPublisherFactory: PublisherFactory {
@@ -21,7 +21,7 @@ pub trait SharedPublisherFactory: PublisherFactory {
     subscriber: S,
   )
   where
-    S: Sub<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static;
+    S: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static;
 }
 
 #[derive(Clone)]
@@ -43,16 +43,8 @@ impl<'a, Emit> LocalObservable<'a> for ObservableBase<Emit>
 where
   Emit: LocalPublisherFactory<'a>,
 {
-  type Unsub = LocalSubscription<'a>;
-  fn actual_subscribe<O>(
-    self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + 'a,
-  {
-    //self.0.subscribe(subscriber)
-    LocalSubscription::default()
+  fn actual_subscribe<S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: S) {
+    self.0.subscribe(subscriber)
   }
 }
 
@@ -60,15 +52,10 @@ impl<Emit> SharedObservable for ObservableBase<Emit>
 where
   Emit: SharedPublisherFactory,
 {
-  type Unsub = SharedSubscription;
-  fn actual_subscribe<O>(
-    self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub
-  where
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  {
-    //self.0.subscribe(subscriber)
-    SharedSubscription::default()
+
+  fn actual_subscribe<
+    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static,
+  >(self, subscriber: S) {
+    self.0.subscribe(subscriber)
   }
 }

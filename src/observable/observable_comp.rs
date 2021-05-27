@@ -41,7 +41,7 @@ where
   N: FnMut(S::Item) + 'a,
   S::Item: 'a,
 {
-  type Unsub = S::Unsub;
+  type Unsub = LocalSubscription<'a>;
   fn subscribe_complete(self, next: N, complete: C) -> SubscriptionWrapper<Self::Unsub>
   where
     Self: Sized,
@@ -65,7 +65,7 @@ where
   N: FnMut(S::Item) + Send + Sync + 'static,
   S::Item: 'static,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
   fn subscribe_complete(self, next: N, complete: C) -> SubscriptionWrapper<Self::Unsub>
   where
     Self: Sized,

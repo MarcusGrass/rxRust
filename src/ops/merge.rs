@@ -3,6 +3,7 @@ use crate::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct MergeOp<S1, S2> {
@@ -26,12 +27,12 @@ where
   S1: LocalObservable<'a>,
   S2: LocalObservable<'a, Item = S1::Item, Err = S1::Err>,
 {
-  type Unsub = LocalSubscription<'a>;
 
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let subscription = subscriber.subscription;
     let merge_observer = Rc::new(RefCell::new(MergeObserver {
       observer: subscriber.observer,
@@ -48,7 +49,9 @@ where
         observer: merge_observer,
         subscription: LocalSubscription::default(),
       }),
-    ))
+    ));
+
+     */
   }
 }
 
@@ -75,16 +78,15 @@ where
 impl<S1, S2> SharedObservable for MergeOp<S1, S2>
 where
   S1: SharedObservable,
-  S2: SharedObservable<Item = S1::Item, Err = S1::Err, Unsub = S1::Unsub>,
-  S1::Unsub: Send + Sync,
+  S2: SharedObservable<Item = S1::Item, Err = S1::Err>,
 {
-  type Unsub = SharedSubscription;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let subscription = subscriber.subscription;
     let merge_observer = Arc::new(Mutex::new(MergeObserver {
       observer: subscriber.observer,
@@ -100,7 +102,9 @@ where
         observer: merge_observer,
         subscription: SharedSubscription::default(),
       }),
-    ))
+    ));
+
+     */
   }
 }
 

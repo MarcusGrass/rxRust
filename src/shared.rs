@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::subscriber::Subscriber;
 
 /// Shared wrap the Observable， subscribe and accept subscribe in a safe mode
 /// by SharedObservable.
@@ -6,13 +7,12 @@ use crate::prelude::*;
 pub struct Shared<R>(pub(crate) R);
 
 pub trait SharedObservable: Observable {
-  type Unsub: SubscriptionLike + Send + Sync + 'static;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    S: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub;
+    subscriber: S,
+  );
 
   /// Convert to a thread-safe mode.
   #[inline]
@@ -26,18 +26,14 @@ pub trait SharedObservable: Observable {
 
 observable_proxy_impl!(Shared, S);
 
-impl<S> SharedObservable for Shared<S>
+impl<SO> SharedObservable for Shared<SO>
 where
-  S: SharedObservable,
+    SO: SharedObservable,
 {
-  type Unsub = S::Unsub;
-  #[inline]
+
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
-    self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static,
+  >(self, subscriber: S) {
     self.0.actual_subscribe(subscriber)
   }
 }

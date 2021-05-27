@@ -57,7 +57,7 @@ where
   S::Err: 'a,
   S::Item: 'a,
 {
-  type Unsub = S::Unsub;
+  type Unsub = LocalSubscription<'a>;
   fn subscribe_err(self, next: N, error: E) -> SubscriptionWrapper<Self::Unsub> {
     let mut unsub = self.actual_subscribe(Subscriber::local(ObserverErr {
       next,
@@ -78,7 +78,7 @@ where
   S::Item: 'static,
   S::Err: 'static,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
   fn subscribe_err(self, next: N, error: E) -> SubscriptionWrapper<Self::Unsub>
   where
     Self: Sized,

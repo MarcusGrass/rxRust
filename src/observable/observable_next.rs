@@ -36,7 +36,7 @@ where
   N: FnMut(S::Item) + 'a,
   S::Item: 'a,
 {
-  type Unsub = S::Unsub;
+  type Unsub = LocalSubscription<'a>;
   fn subscribe(self, next: N) -> SubscriptionWrapper<Self::Unsub> {
     let mut unsub = self.actual_subscribe(Subscriber::local(ObserverN {
       next,
@@ -54,7 +54,7 @@ where
   N: FnMut(S::Item) + Send + Sync + 'static,
   S::Item: 'static,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
   fn subscribe(self, next: N) -> SubscriptionWrapper<Self::Unsub> {
     let mut unsub = self.0.actual_subscribe(Subscriber::shared(ObserverN {
       next,

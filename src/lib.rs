@@ -32,7 +32,7 @@ pub mod prelude {
   pub use crate::shared;
   pub use crate::subject;
   pub use crate::subject::*;
-  pub use crate::subscriber::Subscriber;
+  pub use crate::subscriber::*;
   pub use crate::subscription;
   pub use crate::subscription::*;
   pub use crate::type_hint::TypeHint;

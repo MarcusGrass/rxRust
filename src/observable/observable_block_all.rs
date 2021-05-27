@@ -1,35 +1,57 @@
 #![cfg(test)]
 use crate::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock, Weak};
 use std::time::Duration;
 
 #[derive(Clone)]
-pub struct ObserverBlockAll<N, E, C, Item, Err> {
+pub struct ObserverBlockAll<N, E, C, Sub, Item, Err> {
   next: N,
   error: E,
   complete: C,
+  upstream: Arc<RwLock<Weak<Sub>>>,
   is_stopped: Arc<Mutex<bool>>,
   marker: TypeHint<(*const Item, *const Err)>,
 }
 
-impl<Item, Err, N, E, C> ObserverBlockAll<N, E, C, Item, Err> {
-  #[inline(always)]
-  pub fn new(next: N, error: E, complete: C) -> Self {
-    ObserverBlockAll {
-      next,
-      error,
-      complete,
-      is_stopped: Arc::new(Mutex::new(false)),
-      marker: TypeHint::new(),
-    }
+impl<Item, Err, Sub, N, E, C> Subscriber for ObserverBlockAll<N, E, C, Sub, Item, Err>
+  where
+      C: FnMut(),
+      N: FnMut(Item),
+      E: FnMut(Err),
+      Sub: SubscriptionLike,
+{
+
+  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>) {
+    *self.upstream.write().unwrap() = sub;
+    self.upstream.write().unwrap().upgrade().unwrap().request(usize::MAX)
   }
 }
 
-impl<Item, Err, N, E, C> Observer for ObserverBlockAll<N, E, C, Item, Err>
+impl<Item, Err, S, N, E, C> SubscriptionLike for ObserverBlockAll<N, E, C, S, Item, Err>
+  where
+      C: FnMut(),
+      N: FnMut(Item),
+      E: FnMut(Err),
+      S: SubscriptionLike,
+{
+
+  fn request(&mut self, _requested: usize) {
+  }
+
+  fn unsubscribe(&mut self) {
+    self.upstream.write().unwrap().upgrade().unwrap().unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+      todo!()
+  }
+}
+impl<Item, Err, S, N, E, C> Observer for ObserverBlockAll<N, E, C, S, Item, Err>
 where
   C: FnMut(),
   N: FnMut(Item),
   E: FnMut(Err),
+  S: SubscriptionLike,
 {
   type Item = Item;
   type Err = Err;
@@ -84,7 +106,8 @@ where
   S::Err: 'static,
   S::Item: 'static,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
+
   fn subscribe_blocking_all(
     self,
     next: N,
@@ -96,19 +119,19 @@ where
   {
     let stopped = Arc::new(Mutex::new(false));
     let stopped_c = Arc::clone(&stopped);
-    let subscriber = Subscriber::shared(ObserverBlockAll {
+    let subscriber = ObserverBlockAll {
       next,
       error,
       complete,
+      upstream: Arc::new(RwLock::new(Weak::new())),
       is_stopped: stopped,
       marker: TypeHint::new(),
-    });
-    let mut sub = self.actual_subscribe(subscriber);
-    sub.request(usize::MAX);
+    };
+    self.actual_subscribe(subscriber);
     while !*stopped_c.lock().unwrap() {
       std::thread::sleep(Duration::from_millis(1))
     }
-    SubscriptionWrapper(sub)
+    SubscriptionWrapper(SharedSubscription::default())
   }
 }
 

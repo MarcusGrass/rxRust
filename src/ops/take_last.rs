@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{error_proxy_impl};
+use crate::subscriber::Subscriber;
 use std::collections::VecDeque;
 
 #[derive(Clone)]
@@ -13,9 +14,10 @@ macro_rules! observable_impl {
   ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    /*
     let subscriber = Subscriber {
       observer: TakeLastObserver {
         observer: subscriber.observer,
@@ -25,6 +27,8 @@ macro_rules! observable_impl {
       subscription: subscriber.subscription,
     };
     self.source.actual_subscribe(subscriber)
+
+     */
   }
 }
 }
@@ -35,7 +39,6 @@ impl<'a, S> LocalObservable<'a> for TakeLastOp<S>
 where
   S: LocalObservable<'a> + 'a,
 {
-  type Unsub = S::Unsub;
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
@@ -44,7 +47,6 @@ where
   S: SharedObservable,
   S::Item: Send + Sync + 'static,
 {
-  type Unsub = S::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 

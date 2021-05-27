@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct DelayOp<S, SD> {
@@ -39,16 +40,14 @@ where
 impl<S, SD> SharedObservable for DelayOp<S, SD>
 where
   S: SharedObservable + Send + Sync + 'static,
-  S::Unsub: Send + Sync,
   SD: SharedScheduler + Send + Sync + 'static,
 {
-  type Unsub = SharedSubscription;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let delay = self.delay;
     let source = self.source;
     let scheduler = self.scheduler;
@@ -73,21 +72,19 @@ where
       requested,
       started: false,
       handle,
-    })
+    });
   }
 }
 
-impl<S, SD, Unsub> LocalObservable<'static> for DelayOp<S, SD>
+impl<S, SD> LocalObservable<'static> for DelayOp<S, SD>
 where
-  S: LocalObservable<'static, Unsub = Unsub> + 'static,
-  Unsub: SubscriptionLike + 'static,
+  S: LocalObservable<'static> + 'static,
   SD: LocalScheduler + 'static,
 {
-  type Unsub = LocalSubscription<'static>;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'static>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let delay = self.delay;
     let source = self.source;
     let scheduler = self.scheduler;
@@ -112,7 +109,7 @@ where
       requested,
       started: false,
       handle,
-    })
+    });
   }
 }
 

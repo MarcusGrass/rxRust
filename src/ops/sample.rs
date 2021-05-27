@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{error_proxy_impl};
+use crate::subscriber::Subscriber;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
@@ -23,19 +24,17 @@ impl<Source, Sampling> SharedObservable for SampleOp<Source, Sampling>
 where
   Source: SharedObservable,
   Source::Item: Send + Sync + 'static + Clone,
-  Source::Unsub: Send + Sync,
   Source::Err: Send + Sync + 'static,
   Sampling: SharedObservable<Err = Source::Err>,
   Sampling::Item: Send + Sync + 'static + Clone,
-  Sampling::Unsub: Send + Sync,
 {
-  type Unsub = SharedSubscription;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let subscription = subscriber.subscription;
     let source_observer = Arc::new(Mutex::new(SampleObserver {
       observer: subscriber.observer,
@@ -52,7 +51,8 @@ where
       observer: source_observer,
       subscription: SharedSubscription::default(),
     }));
-    subscription
+
+     */
   }
 }
 
@@ -61,11 +61,11 @@ where
   Source: LocalObservable<'a> + 'a,
   Sampling: LocalObservable<'a, Err = Source::Err> + 'a,
 {
-  type Unsub = LocalSubscription<'a>;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let subscription = subscriber.subscription;
     let source_observer = Rc::new(RefCell::new(SampleObserver {
       observer: subscriber.observer,
@@ -82,7 +82,8 @@ where
       observer: source_observer,
       subscription: LocalSubscription::default(),
     }));
-    subscription
+
+     */
   }
 }
 

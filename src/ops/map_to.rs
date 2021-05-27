@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl};
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct MapToOp<S, B> {
@@ -12,10 +13,11 @@ macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
     fn actual_subscribe<O > (
       self,
-      subscriber: Subscriber<O, $subscription>,
-    ) -> Self::Unsub
-    where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+      subscriber: O,
+    )
+    where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
       let value = self.value;
+      /*
       self.source.actual_subscribe(Subscriber {
         observer: MapToObserver {
           observer: subscriber.observer,
@@ -23,7 +25,9 @@ macro_rules! observable_impl {
           marker: TypeHint::new(),
         },
         subscription: subscriber.subscription,
-      })
+      });
+
+       */
     }
   }
 }
@@ -42,7 +46,6 @@ where
   B: Clone + 'a,
   S::Item: 'a,
 {
-  type Unsub = S::Unsub;
   observable_impl!(LocalSubscription<'a>,'a);
 }
 
@@ -52,7 +55,6 @@ where
   B: Clone + Send + Sync + 'static,
   S::Item: 'static,
 {
-  type Unsub = S::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 

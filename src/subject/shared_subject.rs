@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use std::sync::{Arc, Mutex};
+use crate::subscriber::Subscriber;
 
 type SharedPublishers<Item, Err> =
   Arc<Mutex<Vec<Box<dyn Publisher<Item = Item, Err = Err> + Send + Sync>>>>;
@@ -27,13 +28,12 @@ impl<Item, Err> Observable for SharedSubject<Item, Err> {
 }
 
 impl<Item, Err> SharedObservable for SharedSubject<Item, Err> {
-  type Unsub = SharedSubscription;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let subscription = subscriber.subscription.clone();
     self.subscription.add(subscription.clone());
     self
@@ -42,7 +42,6 @@ impl<Item, Err> SharedObservable for SharedSubject<Item, Err> {
       .lock()
       .unwrap()
       .push(Box::new(subscriber));
-    subscription
   }
 }
 

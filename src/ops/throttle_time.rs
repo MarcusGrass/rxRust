@@ -5,6 +5,7 @@ use std::{
   sync::{Arc, Mutex},
   time::Duration,
 };
+use crate::subscriber::Subscriber;
 
 /// Config to define leading and trailing behavior for throttle
 #[derive(PartialEq, Clone, Copy)]
@@ -23,19 +24,18 @@ pub struct ThrottleTimeOp<S, SD> {
 
 observable_proxy_impl!(ThrottleTimeOp, S, SD);
 
-impl<Item, Err, S, SD, Unsub> LocalObservable<'static> for ThrottleTimeOp<S, SD>
+impl<Item, Err, S, SD> LocalObservable<'static> for ThrottleTimeOp<S, SD>
 where
-  S: LocalObservable<'static, Item = Item, Err = Err, Unsub = Unsub>,
-  Unsub: SubscriptionLike + 'static,
+  S: LocalObservable<'static, Item = Item, Err = Err>,
   Item: Clone + 'static,
   SD: LocalScheduler + 'static,
 {
-  type Unsub = Unsub;
 
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'static>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let Self {
       source,
       duration,
@@ -55,6 +55,8 @@ where
       }))),
       subscription: subscriber.subscription,
     })
+
+     */
   }
 }
 
@@ -64,14 +66,13 @@ where
   S::Item: Clone + Send + 'static,
   SD: SharedScheduler + Send + 'static,
 {
-  type Unsub = S::Unsub;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> S::Unsub {
-    let Self {
+    subscriber: O,
+  ) {
+    /*let Self {
       source,
       duration,
       edge,
@@ -92,7 +93,7 @@ where
         scheduler,
       }))),
       subscription,
-    })
+    })*/
   }
 }
 

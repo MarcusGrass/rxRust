@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl};
 
+use crate::subscriber::Subscriber;
 #[derive(Clone)]
 pub struct SkipOp<S> {
   pub(crate) source: S,
@@ -12,9 +13,10 @@ macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    /*
     let subscriber = Subscriber {
       observer: SkipObserver {
         observer: subscriber.observer,
@@ -25,6 +27,8 @@ macro_rules! observable_impl {
       subscription: subscriber.subscription,
     };
     self.source.actual_subscribe(subscriber)
+
+     */
   }
 }
 }
@@ -35,7 +39,6 @@ impl<'a, S> LocalObservable<'a> for SkipOp<S>
 where
   S: LocalObservable<'a>,
 {
-  type Unsub = S::Unsub;
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
@@ -43,7 +46,6 @@ impl<S> SharedObservable for SkipOp<S>
 where
   S: SharedObservable,
 {
-  type Unsub = S::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 

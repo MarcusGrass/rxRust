@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::scheduler::SharedScheduler;
+use crate::subscriber::Subscriber;
 use std::{
   cell::RefCell,
   rc::Rc,
@@ -21,11 +22,11 @@ where
   S::Err: Clone + 'static,
   SD: LocalScheduler + 'static,
 {
-  type Unsub = S::Unsub;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'static>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let Subscriber {
       observer,
       subscription,
@@ -39,7 +40,9 @@ where
     self.source.actual_subscribe(Subscriber {
       observer,
       subscription,
-    })
+    });
+
+     */
   }
 }
 
@@ -50,13 +53,13 @@ where
   S::Err: Clone + Send + 'static,
   SD: SharedScheduler + Send + Sync + 'static,
 {
-  type Unsub = S::Unsub;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let Subscriber {
       observer,
       subscription,
@@ -69,7 +72,9 @@ where
     self.source.actual_subscribe(Subscriber {
       observer: subscriber,
       subscription,
-    })
+    });
+
+     */
   }
 }
 

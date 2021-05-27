@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::prelude::*;
 
+use crate::subscriber::Subscriber;
 #[derive(Clone)]
 pub struct TakeUntilOp<S, N> {
   pub(crate) source: S,
@@ -17,9 +18,10 @@ macro_rules! observable_impl {
     $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item, Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item, Err= Self::Err> + $($marker +)* $lf {
+    /*
     let  subscription = subscriber.subscription;
     // We need to keep a reference to the observer from two places
     let shared_observer = $sharer($mutability_enabler(subscriber.observer));
@@ -40,7 +42,9 @@ macro_rules! observable_impl {
       source: self.source.actual_subscribe(main_subscriber),
       notifier: self.notifier.actual_subscribe(notifier_subscriber),
       started: false
-    })
+    });
+
+     */
   }
 }
 }
@@ -80,7 +84,6 @@ where
   S: LocalObservable<'a> + 'a,
   N: LocalObservable<'a, Err = S::Err> + 'a,
 {
-  type Unsub = LocalSubscription<'a>;
   observable_impl!(LocalSubscription<'a>,
     LocalSubscription::new, Rc::new, RefCell::new, 'a);
 }
@@ -91,10 +94,7 @@ where
   N: SharedObservable<Err = S::Err>,
   S::Item: Send + Sync + 'static,
   N::Item: Send + Sync + 'static,
-  S::Unsub: Send + Sync,
-  N::Unsub: Send + Sync,
 {
-  type Unsub = SharedSubscription;
   observable_impl!(
     SharedSubscription,
     SharedSubscription::new,

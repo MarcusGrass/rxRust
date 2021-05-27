@@ -16,10 +16,10 @@ use crate::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use crate::subscriber::Subscriber;
 
-struct Inner<C, U> {
+struct Inner<C> {
   connectable: C,
-  connection: Option<U>,
 }
 
 pub struct RefCount<T, C>(T, TypeHint<C>);
@@ -28,10 +28,10 @@ impl<T: Clone, C> Clone for RefCount<T, C> {
   fn clone(&self) -> Self { RefCount(self.0.clone(), TypeHint::new()) }
 }
 
-type LocalRef<C, U> = Rc<RefCell<Inner<C, U>>>;
+type LocalRef<C> = Rc<RefCell<Inner<C>>>;
 
 pub struct InnerLocalRefCount<'a, S, Item, Err>(
-  LocalRef<LocalConnectableObservable<'a, S, Item, Err>, S::Unsub>,
+  LocalRef<LocalConnectableObservable<'a, S, Item, Err>>,
 )
 where
   S: LocalObservable<'a, Item = Item, Err = Err>;
@@ -49,10 +49,10 @@ where
   fn clone(&self) -> Self { InnerLocalRefCount(self.0.clone()) }
 }
 
-type SharedRef<C, U> = Arc<Mutex<Inner<C, U>>>;
+type SharedRef<C> = Arc<Mutex<Inner<C>>>;
 
 pub struct InnerSharedRefCount<S, Item, Err>(
-  SharedRef<SharedConnectableObservable<S, Item, Err>, S::Unsub>,
+  SharedRef<SharedConnectableObservable<S, Item, Err>>,
 )
 where
   S: SharedObservable<Item = Item, Err = Err>;
@@ -82,7 +82,6 @@ where
     RefCount(
       InnerLocalRefCount(Rc::new(RefCell::new(Inner {
         connectable,
-        connection: None,
       }))),
       TypeHint::new(),
     )
@@ -98,7 +97,6 @@ where
     RefCount(
       InnerSharedRefCount(Arc::new(Mutex::new(Inner {
         connectable,
-        connection: None,
       }))),
       TypeHint::new(),
     )
@@ -116,15 +114,13 @@ where
 impl<'a, Item, Err, S> LocalObservable<'a> for LocalRefCount<'a, S, Item, Err>
 where
   S: LocalObservable<'a, Item = Item, Err = Err> + Clone,
-  S::Unsub: Clone,
   Item: Clone + 'a,
   Err: Clone + 'a,
 {
-  type Unsub = RefCountSubscription<LocalSubscription<'a>, S::Unsub>;
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let mut inner = (self.0).0.borrow_mut();
     inner.connectable.clone().actual_subscribe(subscriber);
     if inner.connection.is_none() {
@@ -134,7 +130,7 @@ where
     RefCountSubscription {
       subscription: inner.connectable.subject.subscription.clone(),
       connection,
-    }
+    };
   }
 }
 
@@ -149,17 +145,15 @@ where
 impl<Item, Err, S> SharedObservable for SharedRefCount<S, Item, Err>
 where
   S: SharedObservable<Item = Item, Err = Err> + Clone,
-  S::Unsub: Clone,
   Item: Clone + Send + Sync + 'static,
   Err: Clone + Send + Sync + 'static,
 {
-  type Unsub = RefCountSubscription<SharedSubscription, S::Unsub>;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let mut inner = (self.0).0.lock().unwrap();
     inner.connectable.clone().actual_subscribe(subscriber);
     if inner.connection.is_none() {
@@ -169,7 +163,7 @@ where
     RefCountSubscription {
       subscription: inner.connectable.subject.subscription.clone(),
       connection,
-    }
+    };
   }
 }
 

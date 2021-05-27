@@ -1,5 +1,6 @@
 use crate::error_proxy_impl;
 use crate::prelude::*;
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct LastOp<S, Item> {
@@ -20,9 +21,10 @@ macro_rules! observable_impl {
   ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    /*
     let subscriber = Subscriber {
       observer: LastObserver {
         observer: subscriber.observer,
@@ -30,7 +32,9 @@ macro_rules! observable_impl {
       },
       subscription: subscriber.subscription,
     };
-    self.source.actual_subscribe(subscriber)
+    self.source.actual_subscribe(subscriber);
+
+     */
   }
 }
 }
@@ -40,7 +44,6 @@ where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Clone,
 {
-  type Unsub = S::Unsub;
   observable_impl!(LocalSubscription<'a>, 'a);
 }
 
@@ -49,7 +52,6 @@ where
   S: SharedObservable<Item = Item>,
   Item: Send + Sync + 'static + Clone,
 {
-  type Unsub = S::Unsub;
   observable_impl!(SharedSubscription, Send + Sync + 'static);
 }
 

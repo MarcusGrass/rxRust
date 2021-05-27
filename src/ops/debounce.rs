@@ -5,6 +5,7 @@ use std::{
   sync::{Arc, Mutex},
   time::{Duration, Instant},
 };
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct DebounceOp<S, SD> {
@@ -15,25 +16,24 @@ pub struct DebounceOp<S, SD> {
 
 observable_proxy_impl!(DebounceOp, S, SD);
 
-impl<Item, Err, S, SD, Unsub> LocalObservable<'static> for DebounceOp<S, SD>
+impl<Item, Err, S, SD> LocalObservable<'static> for DebounceOp<S, SD>
 where
-  S: LocalObservable<'static, Item = Item, Err = Err, Unsub = Unsub>,
-  Unsub: SubscriptionLike + 'static,
+  S: LocalObservable<'static, Item = Item, Err = Err>,
   Item: Clone + 'static,
   SD: LocalScheduler + 'static,
 {
-  type Unsub = Unsub;
 
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'static>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
     let Self {
       source,
       scheduler,
       duration,
     } = self;
 
+    /*
     source.actual_subscribe(Subscriber {
       observer: LocalDebounceObserver(Rc::new(RefCell::new(DebounceObserver {
         observer: subscriber.observer,
@@ -44,6 +44,8 @@ where
       }))),
       subscription: subscriber.subscription,
     })
+
+     */
   }
 }
 impl<S, SD> SharedObservable for DebounceOp<S, SD>
@@ -52,13 +54,13 @@ where
   S::Item: Clone + Send + 'static,
   SD: SharedScheduler + Send + 'static,
 {
-  type Unsub = S::Unsub;
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> S::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let Self {
       source,
       duration,
@@ -78,6 +80,8 @@ where
       }))),
       subscription,
     })
+
+     */
   }
 }
 

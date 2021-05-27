@@ -4,6 +4,7 @@ use std::{
   rc::Rc,
   sync::{Arc, Mutex},
 };
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct FinalizeOp<S, F> {
@@ -25,12 +26,12 @@ where
   S: LocalObservable<'a>,
   F: FnMut() + 'static,
 {
-  type Unsub = LocalSubscription<'a>;
 
-  fn actual_subscribe<O: Observer<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
-    subscriber: Subscriber<O, LocalSubscription<'a>>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  )  {
+    /*
     let subscription = subscriber.subscription.clone();
     let func = Rc::new(RefCell::new(Some(self.func)));
     let actual = self.source.actual_subscribe(Subscriber {
@@ -44,7 +45,9 @@ where
       source: actual,
       func,
       is_closed: false,
-    })
+    });
+
+     */
   }
 }
 
@@ -52,16 +55,15 @@ impl<S, F> SharedObservable for FinalizeOp<S, F>
 where
   S: SharedObservable,
   F: FnMut() + Send + Sync + 'static,
-  S::Unsub: Send + Sync,
 {
-  type Unsub = SharedSubscription;
 
   fn actual_subscribe<
-    O: Observer<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
-    subscriber: Subscriber<O, SharedSubscription>,
-  ) -> Self::Unsub {
+    subscriber: O,
+  ) {
+    /*
     let subscription = subscriber.subscription.clone();
     let func = Arc::new(Mutex::new(Some(self.func)));
     let actual = self.source.actual_subscribe(Subscriber {
@@ -75,7 +77,9 @@ where
       source: actual,
       func,
       is_closed: false,
-    })
+    });
+
+     */
   }
 }
 

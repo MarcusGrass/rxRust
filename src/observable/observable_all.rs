@@ -72,7 +72,7 @@ where
   S::Item: 'a,
   C: FnMut() + 'a,
 {
-  type Unsub = S::Unsub;
+  type Unsub = LocalSubscription<'a>;
   fn subscribe_all(
     self,
     next: N,
@@ -104,7 +104,7 @@ where
   S::Err: 'static,
   S::Item: 'static,
 {
-  type Unsub = S::Unsub;
+  type Unsub = SharedSubscription;
   fn subscribe_all(
     self,
     next: N,

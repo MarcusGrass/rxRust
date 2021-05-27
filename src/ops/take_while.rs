@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl};
+use crate::subscriber::Subscriber;
 
 #[derive(Clone)]
 pub struct TakeWhileOp<S, F> {
@@ -10,12 +11,12 @@ pub struct TakeWhileOp<S, F> {
 #[doc(hidden)]
 macro_rules! observable_impl {
   ($subscription:ty, $source:ident, $($marker:ident +)* $lf: lifetime) => {
-  type Unsub = $source::Unsub;
   fn actual_subscribe<O>(
     self,
-    subscriber: Subscriber<O, $subscription>,
-  ) -> Self::Unsub
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    subscriber: O,
+  )
+  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    /*
     let subscriber = Subscriber {
       observer: TakeWhileObserver {
         observer: subscriber.observer,
@@ -25,6 +26,8 @@ macro_rules! observable_impl {
       subscription: subscriber.subscription,
     };
     self.source.actual_subscribe(subscriber)
+
+     */
   }
 }
 }
