@@ -12,6 +12,15 @@ pub trait Subscriber<S>: Observer + SubscriptionLike {
   fn on_subscribe(&self, sub: S);
 }
 
+pub trait LocalSubscriber<'a> : Observer + SubscriptionLike {
+  fn on_subscribe(&self, sub: LocalSubscription<'a>);
+}
+
+pub trait SharedSubscriber: Observer + SubscriptionLike {
+
+  fn on_subscribe(&self, sub: SharedSubscription);
+}
+
 impl<S: ?Sized, T> Subscriber<T> for Box<S> where S: Subscriber<T> {
   fn on_subscribe(&self, sub: T) {
     (**self).on_subscribe(sub)

@@ -70,7 +70,10 @@ pub trait TearDownSize: SubscriptionLike {
 
 impl<'a> SubscriptionLike for LocalSubscription<'a> {
   #[inline]
-  fn request(&mut self, requested: usize) { self.0.request(requested) }
+  fn request(&mut self, requested: usize) {
+    println!("{:?}", "ls req");
+    self.0.request(requested)
+  }
 
   #[inline]
   fn unsubscribe(&mut self) { self.0.unsubscribe() }
@@ -144,6 +147,7 @@ impl<T> Debug for Inner<T> {
 
 impl<T: SubscriptionLike> SubscriptionLike for Inner<T> {
   fn request(&mut self, requested: usize) {
+    println!("{:?} {:?}", "inner req ", self.teardown.len());
     for v in &mut self.teardown {
       v.request(requested);
     }

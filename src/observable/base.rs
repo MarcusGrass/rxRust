@@ -44,6 +44,7 @@ where
   Emit: LocalPublisherFactory<'a>,
 {
   fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    println!("{:?}", "sub");
     self.0.subscribe(subscriber)
   }
 }

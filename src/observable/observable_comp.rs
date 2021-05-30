@@ -1,25 +1,44 @@
 use crate::prelude::*;
+use std::sync::{Mutex, Arc};
 
 #[derive(Clone)]
 pub struct ObserverComp<N, S, C, Item> {
   next: N,
   complete: C,
   is_stopped: bool,
-  upstream: S,
+  upstream: Arc<Mutex<S>>,
   marker: TypeHint<*const Item>,
 }
-
 impl<N, S, C, Item> Subscriber<S> for ObserverComp<N, S, C, Item>
   where
       C: FnMut(),
       N: FnMut(Item),
       S: SubscriptionLike
 {
-  fn on_subscribe(&self, sub: S) {
+  fn on_subscribe(&self, mut sub: S) {
+    //*self.upstream.lock().unwrap() = sub;
+    //self.upstream.lock().unwrap().request(usize::MAX);
+    sub.request(usize::MAX)
+  }
+}
+impl<N, S, C, Item> SubscriptionLike for ObserverComp<N, S, C, Item>
+  where
+      C: FnMut(),
+      N: FnMut(Item),
+      S: SubscriptionLike
+{
+  fn request(&mut self, requested: usize) {
+    println!("{:?}", "Intern req");
+  }
+
+  fn unsubscribe(&mut self) {
+    self.upstream.lock().unwrap().unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
     todo!()
   }
 }
-
 impl<N, S, C, Item> Observer for ObserverComp<N, S, C, Item>
 where
   C: FnMut(),
@@ -29,7 +48,9 @@ where
   type Item = Item;
   type Err = ();
   #[inline]
-  fn next(&mut self, value: Item) { (self.next)(value); }
+  fn next(&mut self, value: Item) {
+    (self.next)(value);
+  }
   #[inline]
   fn error(&mut self, _err: ()) { self.is_stopped = true; }
   fn complete(&mut self) {
@@ -60,18 +81,17 @@ where
     Self: Sized,
     S::Item: 'a,
   {
-    /*
-    let mut unsub = self.actual_subscribe(Subscriber::local(ObserverComp {
+    let sub = LocalSubscription::default();
+      println!("{:?}", "req");
+    self.actual_subscribe(ObserverComp {
       next,
       complete,
       is_stopped: false,
+      upstream: Arc::new(Mutex::new((sub.clone()))),
       marker: TypeHint::new(),
-    }));
-    unsub.request(usize::MAX);
-    SubscriptionWrapper(unsub)
-
-     */
-    SubscriptionWrapper(LocalSubscription::default())
+    });
+    println!("{:?}", "req");
+    SubscriptionWrapper(sub)
   }
 }
 
@@ -116,4 +136,11 @@ fn raii() {
     subject.next(());
   }
   assert_eq!(times, 0);
+
+}
+
+#[test]
+fn complete() {
+  let obs = observable::from_iter(vec![1, 2, 3]);
+  obs.subscribe_complete(|n| println!("{:?}", n), || println!("{:?}", "do"));
 }

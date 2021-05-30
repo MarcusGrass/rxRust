@@ -92,10 +92,12 @@ where
   S: Observer<Item = Iter::Item>,
 {
   fn request(&mut self, requested: usize) {
+    println!("{:?}", "iter req");
     let mut it = self.it.clone().into_iter().skip(self.cursor as usize);
     let mut provided = 0;
     let mut v: Option<S::Item>;
     loop {
+      println!("{:?}", "do");
       v = it.next();
       if v.is_some() {
         self.sub.next(v.unwrap());
