@@ -84,7 +84,7 @@ where
   SD: LocalScheduler,
 {
 
-  fn subscribe<S>(self, mut subscriber: S) where S: Subscriber<Item=Self::Item, Err=Self::Err> + 'static {
+  fn subscribe<S>(self, mut subscriber: S) where S: Subscriber<LocalSubscription<'static>, Item=Self::Item, Err=Self::Err> + 'static {
     let f = self.future;
     let (future, handle) = futures::future::abortable(f);
     self.scheduler.spawn(future.map(move |v| {
@@ -104,7 +104,7 @@ where
 {
 
   fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let f = self.future;
     let (future, handle) = futures::future::abortable(f);
     self.scheduler.spawn(future.map(move |v| {
@@ -160,7 +160,7 @@ where
 {
 
   fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'static {
+      S: Subscriber<LocalSubscription<'static>, Item=Self::Item, Err=Self::Err> + 'static {
     let f = self.future.map(move |v| match v.into() {
       Ok(t) => {
         subscriber.next(t);
@@ -186,7 +186,7 @@ where
 {
 
   fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let f = self.future.map(move |v| match v.into() {
       Ok(t) => {
         subscriber.next(t);

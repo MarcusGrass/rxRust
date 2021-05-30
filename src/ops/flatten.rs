@@ -295,8 +295,9 @@ where
     subscriber: O,
   )
   where
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   {
+    /*
     let state = Arc::new(Mutex::new(FlattenState::new()));
 
     let subscription = subscriber.subscription;
@@ -314,7 +315,9 @@ where
       state,
     };
 
+
     SharedSubscription::new(self.source.actual_subscribe(Subscriber::shared(observer)));
+     */
   }
 }
 
@@ -343,12 +346,15 @@ where
   type Err = Err;
 
   fn next(&mut self, value: Inner) {
+    /*
     let mut state = self.state.borrow_mut();
     state.register_new_observable();
     drop(state);
     let mut sub = value.actual_subscribe(Subscriber::local(self.inner_observer.clone()));
     sub.request(usize::MAX); // TODO: Propagate requested from inner
     self.subscription.add(sub);
+
+     */
   }
 
   error_proxy_impl!(Err, inner_observer);
@@ -368,8 +374,9 @@ where
     subscriber: O,
   )
   where
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a,
+    O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a,
   {
+    /*
     let state = Rc::new(RefCell::new(FlattenState::new()));
 
     let subscription = subscriber.subscription;
@@ -388,6 +395,8 @@ where
     };
 
     LocalSubscription::new(self.source.actual_subscribe(Subscriber::local(observer)));
+
+     */
   }
 }
 

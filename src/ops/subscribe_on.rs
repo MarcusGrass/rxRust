@@ -17,11 +17,12 @@ where
   SD: SharedScheduler + Send + 'static,
 {
   fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
     subscriber: O,
   ) {
+    /*
     let source = self.source;
     let subscription = subscriber.subscription.clone();
     let req = Arc::new(RwLock::new(0));
@@ -45,6 +46,8 @@ where
       req,
       started: false,
     });
+
+     */
   }
 }
 
@@ -79,10 +82,11 @@ where
   S: LocalObservable<'static> + 'static,
   SD: LocalScheduler,
 {
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe<O: Subscriber<LocalSubscription<'static>, Item = Self::Item, Err = Self::Err> + 'static>(
     self,
     subscriber: O,
   ) {
+    /*
     let source = self.source;
     let subscription = subscriber.subscription.clone();
     let handle = self.scheduler.schedule(
@@ -94,6 +98,8 @@ where
       (),
     );
     subscription.add(handle);
+
+     */
   }
 }
 

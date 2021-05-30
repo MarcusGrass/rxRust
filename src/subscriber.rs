@@ -7,17 +7,16 @@ use std::sync::{Weak, Arc, Mutex, RwLock};
 /// the public API for consuming the values of an Observable, all Observers get
 /// converted to a Subscriber, in order to provide Subscription capabilities.
 ///
-pub trait Subscriber: Observer + SubscriptionLike {
-  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>);
+pub trait Subscriber<S>: Observer + SubscriptionLike {
+
+  fn on_subscribe(&self, sub: S);
 }
 
-impl<P> Subscriber for Rc<RefCell<P>> where P: Subscriber {
-
-  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>) {
-    self.borrow().on_subscribe(sub)
+impl<S: ?Sized, T> Subscriber<T> for Box<S> where S: Subscriber<T> {
+  fn on_subscribe(&self, sub: T) {
+    (**self).on_subscribe(sub)
   }
 }
-
 
 impl<S> SubscriptionLike for Arc<RwLock<S>> where S: SubscriptionLike {
   fn request(&mut self, requested: usize) {
@@ -31,5 +30,32 @@ impl<S> SubscriptionLike for Arc<RwLock<S>> where S: SubscriptionLike {
 
   fn is_closed(&self) -> bool {
     todo!()
+  }
+}
+
+impl<S> SubscriptionLike for Rc<S> where S: SubscriptionLike {
+  fn request(&mut self, requested: usize) {
+    self.request(requested);
+  }
+
+  fn unsubscribe(&mut self) {
+    self.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.is_closed()
+  }
+}
+impl<S> SubscriptionLike for Arc<S> where S: SubscriptionLike {
+  fn request(&mut self, requested: usize) {
+    self.request(requested);
+  }
+
+  fn unsubscribe(&mut self) {
+    self.unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.is_closed()
   }
 }

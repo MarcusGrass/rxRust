@@ -2,6 +2,7 @@ use crate::prelude::*;
 use std::iter::{Repeat, Take};
 use crate::subscriber::Subscriber;
 use std::sync::Arc;
+use std::rc::Rc;
 
 /// Creates an observable that produces values from an iterator.
 ///
@@ -60,13 +61,13 @@ where Iter: IntoIterator + Clone + 'a
 {
 
   fn subscribe<S>(self, subscriber: S)  where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
-    let mut publisher = Arc::new(IterPublisher {
+      S: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a {
+    let mut publisher = Rc::new(IterPublisher {
       it: self.0,
       sub: subscriber,
       cursor: 0,
     });
-    publisher.sub.on_subscribe(Arc::downgrade(&publisher.clone()))
+    publisher.clone().sub.on_subscribe(LocalSubscription::new(publisher))
   }
 }
 
@@ -75,20 +76,20 @@ where
   Iter: IntoIterator + Send + Sync + Clone + 'static,
 {
   fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let mut publisher = Arc::new(IterPublisher {
       it: self.0,
       sub: subscriber,
       cursor: 0,
     });
-    publisher.sub.on_subscribe(Arc::downgrade(&publisher.clone()))
+    publisher.clone().sub.on_subscribe(SharedSubscription::new(publisher))
   }
 }
 
 impl<Iter, S> SubscriptionLike for IterPublisher<Iter, S>
 where
   Iter: IntoIterator + Clone,
-  S: Subscriber<Item = Iter::Item>,
+  S: Observer<Item = Iter::Item>,
 {
   fn request(&mut self, requested: usize) {
     let mut it = self.it.clone().into_iter().skip(self.cursor as usize);

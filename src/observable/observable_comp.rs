@@ -1,17 +1,30 @@
 use crate::prelude::*;
 
 #[derive(Clone)]
-pub struct ObserverComp<N, C, Item> {
+pub struct ObserverComp<N, S, C, Item> {
   next: N,
   complete: C,
   is_stopped: bool,
+  upstream: S,
   marker: TypeHint<*const Item>,
 }
 
-impl<N, C, Item> Observer for ObserverComp<N, C, Item>
+impl<N, S, C, Item> Subscriber<S> for ObserverComp<N, S, C, Item>
+  where
+      C: FnMut(),
+      N: FnMut(Item),
+      S: SubscriptionLike
+{
+  fn on_subscribe(&self, sub: S) {
+    todo!()
+  }
+}
+
+impl<N, S, C, Item> Observer for ObserverComp<N, S, C, Item>
 where
   C: FnMut(),
   N: FnMut(Item),
+  S: SubscriptionLike
 {
   type Item = Item;
   type Err = ();
@@ -47,6 +60,7 @@ where
     Self: Sized,
     S::Item: 'a,
   {
+    /*
     let mut unsub = self.actual_subscribe(Subscriber::local(ObserverComp {
       next,
       complete,
@@ -55,6 +69,9 @@ where
     }));
     unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
+
+     */
+    SubscriptionWrapper(LocalSubscription::default())
   }
 }
 
@@ -70,6 +87,7 @@ where
   where
     Self: Sized,
   {
+    /*
     let mut unsub = self.0.actual_subscribe(Subscriber::shared(ObserverComp {
       next,
       complete,
@@ -78,6 +96,9 @@ where
     }));
     unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
+
+     */
+    SubscriptionWrapper(SharedSubscription::default())
   }
 }
 

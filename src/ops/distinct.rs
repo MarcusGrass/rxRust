@@ -15,7 +15,7 @@ macro_rules! distinct_impl {
     self,
     subscriber: O,
   )
-  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+  where O: $subscription<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
     /*
     let subscriber = Subscriber {
       observer: DistinctObserver {
@@ -36,7 +36,9 @@ where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Eq + Hash + Clone,
 {
-  distinct_impl!(LocalSubscription<'a>,'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 impl<S, Item> SharedObservable for DistinctOp<S>
@@ -44,7 +46,11 @@ where
   S: SharedObservable<Item = Item>,
   Item: Hash + Eq + Clone + Send + Sync + 'static,
 {
-  distinct_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 struct DistinctObserver<O, Item> {

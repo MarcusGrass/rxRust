@@ -29,11 +29,12 @@ impl<Item, Err> Observable for SharedSubject<Item, Err> {
 
 impl<Item, Err> SharedObservable for SharedSubject<Item, Err> {
   fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
     subscriber: O,
   ) {
+    /*
     let subscription = subscriber.subscription.clone();
     self.subscription.add(subscription.clone());
     self
@@ -42,6 +43,8 @@ impl<Item, Err> SharedObservable for SharedSubject<Item, Err> {
       .lock()
       .unwrap()
       .push(Box::new(subscriber));
+
+     */
   }
 }
 

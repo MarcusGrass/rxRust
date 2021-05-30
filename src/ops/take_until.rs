@@ -20,7 +20,7 @@ macro_rules! observable_impl {
     self,
     subscriber: O,
   )
-  where O: Subscriber<Item=Self::Item, Err= Self::Err> + $($marker +)* $lf {
+  where O: $subscription<$subscription, Item=Self::Item, Err= Self::Err> + $($marker +)* $lf {
     /*
     let  subscription = subscriber.subscription;
     // We need to keep a reference to the observer from two places
@@ -84,8 +84,9 @@ where
   S: LocalObservable<'a> + 'a,
   N: LocalObservable<'a, Err = S::Err> + 'a,
 {
-  observable_impl!(LocalSubscription<'a>,
-    LocalSubscription::new, Rc::new, RefCell::new, 'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 impl<S, N> SharedObservable for TakeUntilOp<S, N>
@@ -95,13 +96,11 @@ where
   S::Item: Send + Sync + 'static,
   N::Item: Send + Sync + 'static,
 {
-  observable_impl!(
-    SharedSubscription,
-    SharedSubscription::new,
-    Arc::new,
-    Mutex::new,
-    Send + Sync + 'static
-  );
+  fn actual_subscribe<
+    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 pub struct TakeUntilNotifierObserver<O, U, Item> {

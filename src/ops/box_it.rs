@@ -5,8 +5,8 @@ pub trait BoxObservable<'a> {
   type Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + 'a>,
-  ) -> Box<dyn SubscriptionLike + 'a>;
+    subscriber: Box<dyn Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>,
+  );
 }
 
 pub trait SharedBoxObservable {
@@ -14,8 +14,8 @@ pub trait SharedBoxObservable {
   type Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync>,
-  ) -> Box<dyn SubscriptionLike + Send + Sync>;
+    subscriber: Box<dyn Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Send + Sync>,
+  );
 }
 
 #[doc(hidden)]
@@ -25,9 +25,9 @@ macro_rules! box_observable_impl {
   type Err = $source::Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Box<dyn Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf>,
-  ) -> Box<dyn SubscriptionLike + $($marker +)*>  {
-    Box::new(self.actual_subscribe(subscriber))
+    subscriber: Box<dyn $subscription<$subscription, Item=Self::Item,Err= Self::Err> + $($marker +)* $lf>,
+  ) {
+    self.actual_subscribe(subscriber)
   }
 }
 }
@@ -40,9 +40,9 @@ where
   type Err = T::Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + 'a>,
-  ) -> Box<dyn SubscriptionLike + 'a> {
-    Box::new(self.actual_subscribe(subscriber))
+    subscriber: Box<dyn Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>,
+  ) {
+    self.actual_subscribe(subscriber)
   }
 }
 
@@ -52,7 +52,12 @@ where
   T::Item: Send + Sync + 'static,
   T::Err: Send + Sync + 'static,
 {
-  box_observable_impl!(SharedSubscription, T, Send + Sync + 'static);
+  type Item = T::Item;
+  type Err = T::Err;
+
+  fn box_subscribe(self: Box<Self>, subscriber: Box<dyn Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync>) {
+    self.actual_subscribe(subscriber);
+  }
 }
 
 pub struct BoxOp<T>(T);
@@ -71,25 +76,14 @@ pub type SharedBoxOp<Item, Err> =
 pub type SharedCloneBoxOp<Item, Err> =
   BoxOp<Box<dyn SharedBoxClone<Item = Item, Err = Err>>>;
 
-#[doc(hidden)]
-macro_rules! observable_impl {
-    ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
-    self,
-    subscriber: O,
-  )
-  where O: Observer<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
-    self.0.box_subscribe(subscriber)
-  }
-}
-}
-
 impl<'a, Item, Err> Observable for LocalBoxOp<'a, Item, Err> {
   type Item = Item;
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalBoxOp<'a, Item, Err> {
-  observable_impl!(LocalSubscription<'a>, 'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    self.0.box_subscribe(Box::new(subscriber));
+  }
 }
 
 impl<Item, Err> Observable for SharedBoxOp<Item, Err> {
@@ -98,7 +92,11 @@ impl<Item, Err> Observable for SharedBoxOp<Item, Err> {
 }
 
 impl<Item, Err> SharedObservable for SharedBoxOp<Item, Err> {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: S) {
+    self.0.box_subscribe(Box::new(subscriber));
+  }
 }
 
 impl<'a, Item, Err> Observable for LocalCloneBoxOp<'a, Item, Err> {
@@ -106,7 +104,9 @@ impl<'a, Item, Err> Observable for LocalCloneBoxOp<'a, Item, Err> {
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalCloneBoxOp<'a, Item, Err> {
-  observable_impl!(LocalSubscription<'a>, 'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    self.0.box_subscribe(Box::new(subscriber));
+  }
 }
 
 impl<Item, Err> Observable for SharedCloneBoxOp<Item, Err> {
@@ -114,7 +114,11 @@ impl<Item, Err> Observable for SharedCloneBoxOp<Item, Err> {
   type Err = Err;
 }
 impl<Item, Err> SharedObservable for SharedCloneBoxOp<Item, Err> {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: S) {
+    self.0.box_subscribe(Box::new(subscriber));
+  }
 }
 
 /// FIXME: IntoBox should use associated type instead of generic after rust

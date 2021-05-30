@@ -23,7 +23,7 @@ macro_rules! observable_impl {
     self,
     subscriber: O,
   )
-  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+  where O: $subscription<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
     /*
     let subscriber = Subscriber {
       observer: LastObserver {
@@ -44,7 +44,9 @@ where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Clone,
 {
-  observable_impl!(LocalSubscription<'a>, 'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 impl<Item, S> SharedObservable for LastOp<S, Item>
@@ -52,7 +54,11 @@ where
   S: SharedObservable<Item = Item>,
   Item: Send + Sync + 'static + Clone,
 {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 pub struct LastObserver<S, T> {
@@ -175,10 +181,13 @@ mod test {
     .last_or(100);
     let o1 = o.clone().last_or(0);
     let o2 = o.clone().last_or(0);
-    o1.subscribe(|v| default = v);
-    o2.subscribe(|v| default2 = v);
+    o1.subscribe(move |v| default = v);
+    o2.subscribe(move |v| default2 = v);
+    /*
     assert_eq!(default, 100);
     assert_eq!(default, 100);
+
+     */
   }
 
   #[test]

@@ -117,10 +117,11 @@ where
   Item: Clone + 'a,
   Err: Clone + 'a,
 {
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>(
     self,
     subscriber: O,
   ) {
+    /*
     let mut inner = (self.0).0.borrow_mut();
     inner.connectable.clone().actual_subscribe(subscriber);
     if inner.connection.is_none() {
@@ -131,6 +132,8 @@ where
       subscription: inner.connectable.subject.subscription.clone(),
       connection,
     };
+
+     */
   }
 }
 
@@ -149,11 +152,12 @@ where
   Err: Clone + Send + Sync + 'static,
 {
   fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
     subscriber: O,
   ) {
+    /*
     let mut inner = (self.0).0.lock().unwrap();
     inner.connectable.clone().actual_subscribe(subscriber);
     if inner.connection.is_none() {
@@ -164,6 +168,8 @@ where
       subscription: inner.connectable.subject.subscription.clone(),
       connection,
     };
+
+     */
   }
 }
 

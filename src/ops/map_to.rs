@@ -15,7 +15,7 @@ macro_rules! observable_impl {
       self,
       subscriber: O,
     )
-    where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+    where O: $subscription<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
       let value = self.value;
       /*
       self.source.actual_subscribe(Subscriber {
@@ -46,7 +46,9 @@ where
   B: Clone + 'a,
   S::Item: 'a,
 {
-  observable_impl!(LocalSubscription<'a>,'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 impl<B, S> SharedObservable for MapToOp<S, B>
@@ -55,7 +57,11 @@ where
   B: Clone + Send + Sync + 'static,
   S::Item: 'static,
 {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 #[derive(Clone)]

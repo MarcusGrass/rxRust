@@ -6,12 +6,11 @@ use crate::subscriber::Subscriber;
 /// new values can be `next`ed, or an `error` method can be called to raise
 /// an error, or `complete` can be called to notify of a successful
 /// completion.
-pub fn create<F, O, Item, Err>(
+pub fn create<F, S, Item, Err>(
   subscribe: F,
 ) -> ObservableBase<FnPublisherFactory<F, Item, Err>>
 where
-  F: FnOnce(O),
-  O: Subscriber<Item = Item, Err = Err>,
+  F: FnOnce(Box<dyn Subscriber<S, Item = Item, Err = Err>>),
 {
   ObservableBase::new(FnPublisherFactory(subscribe, TypeHint::new()))
 }
@@ -27,11 +26,11 @@ impl<F, Item, Err> PublisherFactory for FnPublisherFactory<F, Item, Err> {
 impl<'a, F: 'a, Item: 'a, Err: 'a> LocalPublisherFactory<'a>
   for FnPublisherFactory<F, Item, Err>
 where
-  F: FnOnce(Box<dyn Subscriber<Item = Item, Err = Err> + 'a>),
+  F: FnOnce(Box<dyn Subscriber<LocalSubscription<'a>, Item = Item, Err = Err> + 'a>),
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
+      S: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a {
     todo!()
   }
 }
@@ -101,10 +100,10 @@ where
 impl<F: 'static, Item: 'static, Err: 'static> SharedPublisherFactory
   for FnPublisherFactory<F, Item, Err>
 where
-    F: FnOnce(Box<dyn Subscriber<Item = Item, Err = Err> + 'static>) + Send + Sync,
+    F: FnOnce(Box<dyn Subscriber<SharedSubscription, Item = Item, Err = Err> + 'static>) + Send + Sync,
 {
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     todo!()
   }
 }

@@ -15,7 +15,7 @@ macro_rules! observable_impl {
     self,
     subscriber: O,
   )
-  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+  where O: $subscription<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
     /*
     self.source.actual_subscribe(Subscriber {
       observer: FilterMapObserver {
@@ -46,7 +46,9 @@ where
   F: FnMut(S::Item) -> Option<Item> + 'a,
   S::Item: 'a,
 {
-  observable_impl!(LocalSubscription<'a>, 'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 impl<Item, S, F> SharedObservable for FilterMapOp<S, F>
@@ -55,7 +57,11 @@ where
   F: FnMut(S::Item) -> Option<Item> + Send + Sync + 'static,
   S::Item: 'static,
 {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 pub struct FilterMapObserver<O, F, Item> {

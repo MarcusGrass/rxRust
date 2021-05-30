@@ -28,7 +28,7 @@ where
   S2: LocalObservable<'a, Item = S1::Item, Err = S1::Err>,
 {
 
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>(
     self,
     subscriber: O,
   ) {
@@ -81,7 +81,7 @@ where
   S2: SharedObservable<Item = S1::Item, Err = S1::Err>,
 {
   fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
     subscriber: O,

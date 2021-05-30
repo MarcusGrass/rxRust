@@ -49,7 +49,7 @@ where
     subscriber: O,
   )
   where
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a,
+    O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a,
   {
     /*
     let subscriber = Subscriber {
@@ -80,7 +80,7 @@ where
     subscriber: O,
   )
   where
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
   {
     /*
     let subscriber = Subscriber {

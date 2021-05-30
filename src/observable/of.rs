@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::subscriber::Subscriber;
 use std::sync::Arc;
+use std::rc::Rc;
 
 /// Creates an observable producing a multiple values.
 ///
@@ -68,9 +69,9 @@ impl<Item> PublisherFactory for OfPublisherFactory<Item> {
 
 impl<'a, Item: 'a + Clone> LocalPublisherFactory<'a> for OfPublisherFactory<Item> {
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
-    let mut publisher = Arc::new(LocalOfPublisher(self.0, subscriber));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()))
+      S: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a {
+    let mut publisher = Rc::new(LocalOfPublisher(self.0, subscriber));
+    publisher.clone().1.on_subscribe(LocalSubscription::new(publisher))
   }
 }
 
@@ -79,7 +80,7 @@ struct LocalOfPublisher<Item: Clone, O>(Item, O);
 
 impl<Item: Clone, O> SubscriptionLike for LocalOfPublisher<Item, O>
 where
-  O: Subscriber<Item = Item>,
+  O: Observer<Item = Item>,
 {
   fn request(&mut self, _: usize) {
     self.1.next(self.0.clone());
@@ -93,7 +94,7 @@ where
 
 impl<Item: Clone + Sync + Send, O> SubscriptionLike for SharedOfPublisher<Item, O>
 where
-  O: Subscriber<Item = Item> + Send + Sync + 'static,
+  O: Observer<Item = Item> + Send + Sync + 'static,
 {
   fn request(&mut self, _: usize) {
     self.1.next(self.0.clone());
@@ -112,9 +113,9 @@ impl<Item: Clone + Sync + Send + 'static> SharedPublisherFactory
   for OfPublisherFactory<Item>
 {
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let mut publisher = Arc::new(SharedOfPublisher(self.0, subscriber));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()));
+    publisher.clone().1.on_subscribe(SharedSubscription::new(publisher));
   }
 }
 
@@ -159,9 +160,9 @@ impl<'a, Item: Clone + 'a, Err: Clone + 'a> LocalPublisherFactory<'a>
   for OfResultPublisherFactory<Item, Err>
 {
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
-    let mut publisher = Arc::new(LocalOfResultPublisher(self.0, subscriber));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()))
+      S: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a {
+    let mut publisher = Rc::new(LocalOfResultPublisher(self.0, subscriber));
+    publisher.clone().1.on_subscribe(LocalSubscription::new(publisher))
   }
 }
 
@@ -174,7 +175,7 @@ struct LocalOfResultPublisher<Item, Err, O>(
 impl<Item: Clone, Err: Clone, O> SubscriptionLike
   for LocalOfResultPublisher<Item, Err, O>
 where
-  O: Subscriber<Item = Item, Err = Err>,
+  O: Observer<Item = Item, Err = Err>,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
@@ -194,7 +195,7 @@ where
 impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static, O>
   SubscriptionLike for SharedOfResultPublisher<Item, Err, O>
 where
-  O: Subscriber<Item = Item, Err = Err> + Send + Sync + 'static,
+  O: Observer<Item = Item, Err = Err> + Send + Sync + 'static,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
@@ -222,9 +223,9 @@ impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static>
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let mut publisher = Arc::new(SharedOfResultPublisher(self.0, subscriber));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()));
+    publisher.clone().1.on_subscribe(SharedSubscription::new(publisher));
   }
 }
 
@@ -261,9 +262,9 @@ impl<Item> PublisherFactory for OfOptionPublisherFactory<Item> {
 impl<'a, Item: Clone + 'a> LocalPublisherFactory<'a> for OfOptionPublisherFactory<Item> {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
-    let mut publisher = Arc::new(LocalOfOptionPublisher(self.0, subscriber));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()))
+      S: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a {
+    let mut publisher = Rc::new(LocalOfOptionPublisher(self.0, subscriber));
+    publisher.clone().1.on_subscribe(LocalSubscription::new(publisher))
   }
 }
 
@@ -275,7 +276,7 @@ struct LocalOfOptionPublisher<Item, O>(
 
 impl<Item: Clone, O> SubscriptionLike for LocalOfOptionPublisher<Item, O>
 where
-  O: Subscriber<Item = Item>,
+  O: Observer<Item = Item>,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
@@ -293,7 +294,7 @@ where
 impl<Item: Clone + Send + Sync + 'static, O> SubscriptionLike
   for SharedOfOptionPublisher<Item, O>
 where
-  O: Subscriber<Item = Item> + Send + Sync + 'static,
+  O: Observer<Item = Item> + Send + Sync + 'static,
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
@@ -316,9 +317,9 @@ impl<Item: Clone + Send + Sync + 'static> SharedPublisherFactory
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let mut publisher = Arc::new(SharedOfOptionPublisher(self.0, subscriber));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()))
+    publisher.clone().1.on_subscribe(SharedSubscription::new(publisher))
   }
 }
 
@@ -356,9 +357,9 @@ where
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
-    let mut publisher = Arc::new(LocalOfFnPublisher(self.0, subscriber, TypeHint::new()));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()));
+      S: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a {
+    let mut publisher = Rc::new(LocalOfFnPublisher(self.0, subscriber, TypeHint::new()));
+    publisher.clone().1.on_subscribe(LocalSubscription::new(publisher));
   }
 }
 
@@ -371,7 +372,7 @@ struct LocalOfFnPublisher<F, Item, O>(
 
 impl<F, Item, O> SubscriptionLike for LocalOfFnPublisher<F, Item, O>
 where
-  O: Subscriber<Item = Item>,
+  O: Observer<Item = Item>,
   F: Fn() -> Item,
 {
   fn request(&mut self, _: usize) {
@@ -386,7 +387,7 @@ where
 
 impl<F, Item, O> SubscriptionLike for SharedOfFnPublisher<F, Item, O>
 where
-  O: Subscriber<Item = Item> + Send + Sync + 'static,
+  O: Observer<Item = Item> + Send + Sync + 'static,
   F: Fn() -> Item,
 {
   fn request(&mut self, _: usize) {
@@ -412,9 +413,9 @@ where
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let mut publisher = Arc::new(SharedOfFnPublisher(self.0, subscriber, TypeHint::new()));
-    publisher.1.on_subscribe(Arc::downgrade(&publisher.clone()))
+    publisher.clone().1.on_subscribe(SharedSubscription::new(publisher))
   }
 }
 
@@ -503,7 +504,7 @@ mod test {
   #[test]
   fn of_macros() {
     let mut value = 0;
-    of_sequence!(1, 2, 3).subscribe(|v| value += v);
+    of_sequence!(1, 2, 3).subscribe(move |v| value += v);
 
     assert_eq!(value, 6);
   }

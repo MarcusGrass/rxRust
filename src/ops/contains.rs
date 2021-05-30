@@ -16,36 +16,14 @@ where
   type Err = S::Err;
 }
 
-#[doc(hidden)]
-macro_rules! observable_impl {
-    ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
-    self,
-    subscriber: O,
-  )
-  where O: Subscriber<Item=bool,Err= Self::Err> + $($marker +)* $lf {
-    /*
-    let subscriber = Subscriber {
-      observer: ContainsObserver{
-        observer: subscriber.observer,
-        target: self.target,
-        done:false,
-      },
-      subscription: subscriber.subscription,
-    };
-    self.source.actual_subscribe(subscriber)
-
-     */
-  }
-}
-}
-
 impl<'a, Item, S> LocalObservable<'a> for ContainsOp<S, Item>
 where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Clone + Eq,
 {
-  observable_impl!(LocalSubscription<'a>,'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 impl<Item, S> SharedObservable for ContainsOp<S, Item>
@@ -53,7 +31,11 @@ where
   S: SharedObservable<Item = Item>,
   Item: Send + Sync + 'static + Clone + Eq,
 {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 pub struct ContainsObserver<S, T> {

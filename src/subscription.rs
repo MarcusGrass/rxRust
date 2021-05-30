@@ -7,6 +7,7 @@ use std::{
   rc::Rc,
   sync::{Arc, Mutex},
 };
+use std::sync::Weak;
 
 /// Subscription returns from `Observable.subscribe(Subscriber)` to allow
 ///  unsubscribing.
@@ -18,6 +19,20 @@ pub trait SubscriptionLike {
   fn unsubscribe(&mut self);
 
   fn is_closed(&self) -> bool;
+}
+
+impl<S: SubscriptionLike> SubscriptionLike for Weak<S> {
+  fn request(&mut self, requested: usize) {
+    self.upgrade().unwrap().request(requested);
+  }
+
+  fn unsubscribe(&mut self) {
+    self.upgrade().unwrap().unsubscribe();
+  }
+
+  fn is_closed(&self) -> bool {
+    self.upgrade().unwrap().is_closed()
+  }
 }
 
 impl Debug for Box<dyn SubscriptionLike> {

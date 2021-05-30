@@ -25,33 +25,25 @@ pub type LocalConnectableObservable<'a, S, Item, Err> =
 pub type SharedConnectableObservable<S, Item, Err> =
   ConnectableObservable<S, SharedSubject<Item, Err>>;
 
-#[doc(hidden)]
-macro_rules! observable_impl {
-    ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  #[inline(always)]
-  fn actual_subscribe<O>(
-    self,
-    subscriber: O,
-  )
-  where O: Subscriber<Item=Self::Item, Err= Self::Err> + $($marker +)* $lf {
-    self.subject.actual_subscribe(subscriber)
-  }
-}
-}
-
 impl<'a, S, Item, Err> LocalObservable<'a>
   for LocalConnectableObservable<'a, S, Item, Err>
 where
   S: LocalObservable<'a, Item = Item, Err = Err>,
 {
-  observable_impl!(LocalSubscription<'a>, 'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    self.subject.actual_subscribe(subscriber);
+  }
 }
 
 impl<S, Item, Err> SharedObservable for SharedConnectableObservable<S, Item, Err>
 where
   S: SharedObservable<Item = Item, Err = Err>,
 {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: Sub) {
+    self.subject.actual_subscribe(subscriber);
+  }
 }
 
 impl<Source, Subject> ConnectableObservable<Source, Subject>

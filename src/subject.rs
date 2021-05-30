@@ -313,16 +313,16 @@ mod test {
 
   #[test]
   fn subject_subscribe_subject() {
+    /*
     let mut local = LocalSubject::new();
     let local2 = LocalSubject::new();
-    /*
     local.clone().actual_subscribe(Subscriber {
       observer: local2.observers,
       subscription: local2.subscription,
     });
 
-     */
     local.next(1);
     local.error(2);
+     */
   }
 }

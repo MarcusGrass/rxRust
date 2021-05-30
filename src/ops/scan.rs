@@ -23,7 +23,7 @@ macro_rules! observable_impl {
     self,
     subscriber: O,
   )
-  where O: Subscriber<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
+  where O: $subscription<Item=Self::Item,Err= Self::Err> + $($marker +)* $lf {
     /*
     self.source_observable.actual_subscribe(Subscriber {
       observer: ScanObserver {
@@ -64,7 +64,9 @@ where
   BinaryOp: FnMut(OutputItem, Source::Item) -> OutputItem + 'a,
   Source::Item: 'a,
 {
-  observable_impl!(LocalSubscription<'a>, 'a);
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    todo!()
+  }
 }
 
 impl<OutputItem, Source, BinaryOp> SharedObservable
@@ -75,7 +77,11 @@ where
   Source::Item: 'static,
   BinaryOp: FnMut(OutputItem, Source::Item) -> OutputItem + Send + Sync + 'static,
 {
-  observable_impl!(SharedSubscription, Send + Sync + 'static);
+  fn actual_subscribe<
+    S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+  >(self, subscriber: S) {
+    todo!()
+  }
 }
 
 // We're making `ScanObserver` being able to be subscribed to other observables

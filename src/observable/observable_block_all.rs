@@ -8,12 +8,12 @@ pub struct ObserverBlockAll<N, E, C, Sub, Item, Err> {
   next: N,
   error: E,
   complete: C,
-  upstream: Arc<RwLock<Weak<Sub>>>,
+  upstream: Arc<RwLock<Sub>>,
   is_stopped: Arc<Mutex<bool>>,
   marker: TypeHint<(*const Item, *const Err)>,
 }
 
-impl<Item, Err, Sub, N, E, C> Subscriber for ObserverBlockAll<N, E, C, Sub, Item, Err>
+impl<Item, Err, Sub, N, E, C> Subscriber<Sub> for ObserverBlockAll<N, E, C, Sub, Item, Err>
   where
       C: FnMut(),
       N: FnMut(Item),
@@ -21,9 +21,9 @@ impl<Item, Err, Sub, N, E, C> Subscriber for ObserverBlockAll<N, E, C, Sub, Item
       Sub: SubscriptionLike,
 {
 
-  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>) {
+  fn on_subscribe(&self, sub: Sub) {
     *self.upstream.write().unwrap() = sub;
-    self.upstream.write().unwrap().upgrade().unwrap().request(usize::MAX)
+    self.upstream.write().unwrap().request(usize::MAX)
   }
 }
 
@@ -39,7 +39,7 @@ impl<Item, Err, S, N, E, C> SubscriptionLike for ObserverBlockAll<N, E, C, S, It
   }
 
   fn unsubscribe(&mut self) {
-    self.upstream.write().unwrap().upgrade().unwrap().unsubscribe();
+    self.upstream.write().unwrap().unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
@@ -123,7 +123,7 @@ where
       next,
       error,
       complete,
-      upstream: Arc::new(RwLock::new(Weak::new())),
+      upstream: Arc::new(RwLock::new(SharedSubscription::default())),
       is_stopped: stopped,
       marker: TypeHint::new(),
     };

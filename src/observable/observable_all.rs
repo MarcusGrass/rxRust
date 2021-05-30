@@ -82,6 +82,7 @@ where
   where
     Self: Sized,
   {
+    /*
     let subscriber = Subscriber::local(ObserverAll {
       next,
       error,
@@ -92,6 +93,9 @@ where
     let mut unsub = self.actual_subscribe(subscriber);
     unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
+    
+     */
+    SubscriptionWrapper(LocalSubscription::default())
   }
 }
 
@@ -114,6 +118,7 @@ where
   where
     Self: Sized,
   {
+    /*
     let subscriber = Subscriber::shared(ObserverAll {
       next,
       error,
@@ -124,6 +129,9 @@ where
     let mut unsub = self.0.actual_subscribe(subscriber);
     unsub.request(usize::MAX);
     SubscriptionWrapper(unsub)
+
+     */
+    SubscriptionWrapper(SharedSubscription::default())
   }
 }
 

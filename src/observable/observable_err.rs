@@ -59,6 +59,7 @@ where
 {
   type Unsub = LocalSubscription<'a>;
   fn subscribe_err(self, next: N, error: E) -> SubscriptionWrapper<Self::Unsub> {
+    /*
     let mut unsub = self.actual_subscribe(Subscriber::local(ObserverErr {
       next,
       error,
@@ -66,7 +67,10 @@ where
       marker: TypeHint::new(),
     }));
     unsub.request(usize::MAX);
+
     SubscriptionWrapper(unsub)
+     */
+      SubscriptionWrapper(LocalSubscription::default())
   }
 }
 
@@ -83,6 +87,7 @@ where
   where
     Self: Sized,
   {
+    /*
     let unsub = self.0.actual_subscribe(Subscriber::shared(ObserverErr {
       next,
       error,
@@ -90,6 +95,8 @@ where
       marker: TypeHint::new(),
     }));
     SubscriptionWrapper(unsub)
+     */
+    SubscriptionWrapper(SharedSubscription::default())
   }
 }
 

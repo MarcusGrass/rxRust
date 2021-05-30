@@ -8,16 +8,16 @@ use std::cell::RefCell;
 pub struct ObserverBlock<N, S, Item> {
   next: N,
   is_stopped: Arc<Mutex<bool>>,
-  upstream: Arc<RwLock<Weak<S>>>,
-  marker: TypeHint<(*const Item, S)>,
+  upstream: Arc<RwLock<S>>,
+  marker: TypeHint<(*const Item)>,
 }
-impl<Item, Sub, N> Subscriber for ObserverBlock<N, Sub, Item>
+impl<Item, S, N> Subscriber<S> for ObserverBlock<N, S, Item>
   where
       N: FnMut(Item),
-      Sub: SubscriptionLike,
+      S: SubscriptionLike
 {
 
-  fn on_subscribe<S: SubscriptionLike>(&self, sub: Weak<S>) {
+  fn on_subscribe(&self, sub: S) {
     *self.upstream.write().unwrap() = sub;
   }
 }
@@ -32,7 +32,7 @@ impl<Item, S, N> SubscriptionLike for ObserverBlock<N, S, Item>
   }
 
   fn unsubscribe(&mut self) {
-    self.upstream.write().unwrap().upgrade().unwrap().unsubscribe();
+    self.upstream.write().unwrap().unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
@@ -42,8 +42,7 @@ impl<Item, S, N> SubscriptionLike for ObserverBlock<N, S, Item>
 
 impl<Item, S, N> Observer for ObserverBlock<N, S, Item>
 where
-  N: FnMut(Item),
-  S: SubscriptionLike,
+  N: FnMut(Item)
 {
   type Item = Item;
   type Err = ();
@@ -92,11 +91,10 @@ where
   {
     let stopped = Arc::new(Mutex::new(false));
     let stopped_c = Arc::clone(&stopped);
-    let arc: Arc<RwLock<Weak<dyn SubscriptionLike>>> = Arc::new(RwLock::new(Weak::new()));
     let subscriber = ObserverBlock {
       next,
       is_stopped: stopped,
-      upstream: arc,
+      upstream: Arc::new(RwLock::default()),
       marker: TypeHint::new(),
     };
     self.actual_subscribe(subscriber);

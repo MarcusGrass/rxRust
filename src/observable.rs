@@ -1148,9 +1148,9 @@ pub trait Observable: Sized {
 }
 
 pub trait LocalObservable<'a>: Observable {
-  fn actual_subscribe<S: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a> (
     self,
-    subscriber: S,
+    subscriber: Sub,
   );
 }
 
@@ -1262,8 +1262,8 @@ mod tests {
     .first_or(100);
     let o1 = o.clone().first_or(0);
     let o2 = o.clone().first_or(0);
-    o1.subscribe(|v| default = v);
-    o2.subscribe(|v| default2 = v);
+    o1.subscribe(move |v| default = v);
+    o2.subscribe(move |v| default2 = v);
     assert_eq!(default, 100);
     assert_eq!(default, 100);
   }
