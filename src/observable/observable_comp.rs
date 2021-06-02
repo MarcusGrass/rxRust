@@ -1,20 +1,22 @@
 use crate::prelude::*;
 use std::sync::{Mutex, Arc};
 
-#[derive(Clone)]
 pub struct ObserverComp<N, C, Item> {
   next: N,
   complete: C,
   is_stopped: bool,
+  upstream: Upstream<Item, ()>,
   marker: TypeHint<*const Item>,
 }
+
 impl<N, C, Item> Subscriber for ObserverComp<N, C, Item>
   where
       C: FnMut(),
       N: FnMut(Item),
 {
-  fn connect(&self, mut chn: SubscriptionChannel<Self::Item, Self::Err>) {
+  fn connect(&mut self, mut chn: SubscriptionChannel<Self::Item, Self::Err>) {
     chn.request(usize::MAX);
+    self.upstream = Upstream::INIT(chn);
     //*self.upstream.lock().unwrap() = sub;
     //self.upstream.lock().unwrap().request(usize::MAX);
   }
@@ -49,8 +51,10 @@ where
   #[inline]
   fn error(&mut self, _err: ()) { self.is_stopped = true; }
   fn complete(&mut self) {
+    println!("{:?}", "Call complete");
     (self.complete)();
     self.is_stopped = true;
+    self.upstream.unsubscribe();
   }
 }
 
@@ -66,8 +70,8 @@ pub trait SubscribeComplete<'a, N, C> {
 impl<'a, S, N, C> SubscribeComplete<'a, N, C> for S
 where
   S: LocalObservable<'a, Err = ()>,
-  C: FnMut() + Send + 'static,
-  N: FnMut(S::Item) + Send + 'static,
+  C: FnMut() + Send + Sync + 'static,
+  N: FnMut(S::Item) + Send + Sync + 'static,
   S::Item: Send + 'static,
 {
   type Unsub = LocalSubscription<'a>;
@@ -81,6 +85,7 @@ where
       next,
       complete,
       is_stopped: false,
+      upstream: Upstream::UNINIT,
       marker: TypeHint::new(),
     });
     println!("{:?}", "req");
@@ -137,6 +142,16 @@ fn raii() {
 
 #[tokio::test(threaded_scheduler)]
 async fn complete() {
+  let cmpl = Arc::new(Mutex::new(false));
+  let hits = Arc::new(Mutex::new(0));
   let obs = observable::from_iter(vec![1, 2, 3]);
-  obs.subscribe_complete(|n| println!("{:?}", n), || println!("{:?}", "do"));
+  let cmpl_c = cmpl.clone();
+  let hits_c = hits.clone();
+  obs.subscribe_complete(move |n| *hits_c.lock().unwrap() += 1, move || *cmpl_c.lock().unwrap() = true);
+  while !*cmpl.lock().unwrap() {
+
+  }
+  assert!(*cmpl.lock().unwrap());
+  assert_eq!(*hits.lock().unwrap(), 3);
+
 }

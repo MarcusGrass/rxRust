@@ -15,7 +15,7 @@ impl<Item, N> Subscriber for ObserverBlock<N, Item>
       N: FnMut(Item),
 {
 
-  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
+  fn connect(&mut self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
   }
 }
 

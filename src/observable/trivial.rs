@@ -121,7 +121,7 @@ impl<Item> SubscriptionLike for EmptyPublisher<Item>
 }
 
 impl<'a, Item: Send + 'static> LocalPublisherFactory<'a> for EmptyPublisherFactory<Item> {
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = EmptyPublisher(p);
@@ -132,7 +132,7 @@ impl<'a, Item: Send + 'static> LocalPublisherFactory<'a> for EmptyPublisherFacto
 
 
 impl<Item: Send + 'static> SharedPublisherFactory for EmptyPublisherFactory<Item> {
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = EmptyPublisher(p);

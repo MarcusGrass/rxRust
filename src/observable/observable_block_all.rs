@@ -21,7 +21,7 @@ impl<Item, Err, Sub, N, E, C> Subscriber for ObserverBlockAll<N, E, C, Sub, Item
       Sub: SubscriptionLike,
 {
 
-  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
+  fn connect(&mut self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
   }
 }
 

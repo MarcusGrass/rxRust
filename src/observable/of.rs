@@ -68,7 +68,7 @@ impl<Item> PublisherFactory for OfPublisherFactory<Item> {
 }
 
 impl<'a, Item: 'static + Clone + Send + Sync> LocalPublisherFactory<'a> for OfPublisherFactory<Item> {
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfPublisher(self.0, p);
@@ -79,7 +79,7 @@ impl<'a, Item: 'static + Clone + Send + Sync> LocalPublisherFactory<'a> for OfPu
 
 struct OfPublisher<Item: Clone>(Item, PublisherChannel<Item, ()>);
 
-impl<Item: Clone + Send + 'static> Source for OfPublisher<Item>
+impl<Item: Clone + Send + Sync + 'static> Source for OfPublisher<Item>
 {
   type Item = Item;
   type Err = ();
@@ -89,7 +89,7 @@ impl<Item: Clone + Send + 'static> Source for OfPublisher<Item>
   }
 }
 
-impl<Item: Clone + Send + 'static> SubscriptionLike for OfPublisher<Item>
+impl<Item: Clone + Send + Sync + 'static> SubscriptionLike for OfPublisher<Item>
 {
   fn request(&mut self, _: usize) {
     self.1.next(self.0.clone());
@@ -121,7 +121,7 @@ struct SharedOfPublisher<Item, O>(Item, O);
 impl<Item: Clone + Sync + Send + 'static> SharedPublisherFactory
   for OfPublisherFactory<Item>
 {
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfPublisher(self.0, p);
@@ -167,10 +167,10 @@ impl<Item, Err> PublisherFactory for OfResultPublisherFactory<Item, Err> {
   type Err = Err;
 }
 
-impl<'a, Item: Clone + Send + 'static, Err: Clone + Send + 'static> LocalPublisherFactory<'a>
+impl<'a, Item: Clone + Send + 'static, Err: Clone + Send + Sync + 'static> LocalPublisherFactory<'a>
   for OfResultPublisherFactory<Item, Err>
 {
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfResultPublisher(self.0, p);
@@ -183,7 +183,7 @@ struct OfResultPublisher<Item: Clone, Err: Clone>(
   Result<Item, Err>,
   PublisherChannel<Item, Err>,
 );
-impl<Item: Clone + Send + 'static, Err: Clone + Send + 'static> Source
+impl<Item: Clone + Send + 'static, Err: Clone + Send + Sync + 'static> Source
 for OfResultPublisher<Item, Err>
 {
   type Item = Item;
@@ -241,7 +241,7 @@ impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static>
   SharedPublisherFactory for OfResultPublisherFactory<Item, Err>
 {
 
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfResultPublisher(self.0, p);
@@ -280,9 +280,9 @@ impl<Item> PublisherFactory for OfOptionPublisherFactory<Item> {
   type Err = ();
 }
 
-impl<'a, Item: Clone + Send + 'static> LocalPublisherFactory<'a> for OfOptionPublisherFactory<Item> {
+impl<'a, Item: Clone + Send + Sync + 'static> LocalPublisherFactory<'a> for OfOptionPublisherFactory<Item> {
 
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfOptionPublisher(self.0, p);
@@ -344,7 +344,7 @@ impl<Item: Clone + Send + Sync + 'static> SharedPublisherFactory
   for OfOptionPublisherFactory<Item>
 {
 
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfOptionPublisher(self.0, p);
@@ -386,7 +386,7 @@ where
   F: Fn() -> Item + Send + 'static,
 {
 
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfFnPublisher(self.0, p, TypeHint::new());
@@ -454,7 +454,7 @@ where
   F: Fn() -> Item + Send + Sync + 'static,
 {
 
-  fn subscribe<S>(self, subscriber: S) where
+  fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
     let (p, s) = pub_sub_channels();
     let mut publisher = OfFnPublisher(self.0, p, TypeHint::new());

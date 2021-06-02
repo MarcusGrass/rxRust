@@ -183,7 +183,16 @@ fn to_interval(
 
 pub fn start_publish_loop<P: Source + Send + 'static, S: Subscriber + Send + 'static>(mut publisher: P, sub: S) {
   tokio::spawn(futures::future::lazy(move |_| {
-    sub;
+    while !publisher.get_channel().unsub_chn.try_recv().is_ok() {
+      if let Ok(requested) = publisher.get_channel().request_chn.try_recv() {
+        publisher.request(requested);
+      }
+    }
+    println!("{:?}", sub.is_closed());
+  }));
+}
+pub fn start_publish_loop2<P: Source + Send + 'static>(mut publisher: P) {
+  tokio::spawn(futures::future::lazy(move |_| {
     while !publisher.get_channel().unsub_chn.try_recv().is_ok() {
       if let Ok(requested) = publisher.get_channel().request_chn.try_recv() {
         publisher.request(requested);
@@ -191,7 +200,6 @@ pub fn start_publish_loop<P: Source + Send + 'static, S: Subscriber + Send + 'st
     }
   }));
 }
-
 mod tokio_scheduler {
   use super::*;
   use std::sync::Arc;

@@ -10,7 +10,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 ///
 pub trait Subscriber: Observer + SubscriptionLike {
 
-  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>);
+  fn connect(&mut self, chn: SubscriptionChannel<Self::Item, Self::Err>);
 }
 
 pub fn pub_sub_channels<Item, Err>() -> (PublisherChannel<Item, Err>, SubscriptionChannel<Item, Err>){
@@ -32,6 +32,31 @@ pub fn pub_sub_channels<Item, Err>() -> (PublisherChannel<Item, Err>, Subscripti
     request_chn: request_channel.0,
     unsub_chn: unsub_channel.0
   })
+}
+
+pub enum Upstream<Item, Err> {
+  UNINIT,
+  INIT(SubscriptionChannel<Item, Err>)
+}
+
+impl<Item, Err> SubscriptionLike for Upstream<Item, Err> {
+  fn request(&mut self, requested: usize) {
+    match self {
+      Upstream::UNINIT => panic!("Request on uninitialized upstream"),
+      Upstream::INIT(chn) => chn.request(requested)
+    }
+  }
+
+  fn unsubscribe(&mut self) {
+    match self {
+      Upstream::UNINIT => panic!("Request on uninitialized upstream"),
+      Upstream::INIT(chn) => chn.unsubscribe()
+    }
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
 }
 
 pub struct SubscriptionChannel<Item, Err> {
@@ -96,7 +121,7 @@ pub trait SharedSubscriber: Observer + SubscriptionLike {
 }
 
 impl<S: ?Sized> Subscriber for Box<S> where S: Subscriber {
-  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
+  fn connect(&mut self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
     (**self).connect(chn)
   }
 }
