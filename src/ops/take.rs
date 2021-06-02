@@ -8,17 +8,51 @@ pub struct TakeOp<S> {
   pub(crate) count: usize,
 }
 
-#[derive(Clone)]
-pub struct TakeOpSubscription<S> {
-  pub(crate) source: S,
+pub struct TakeOpSubscription<S> where S: Subscriber {
+  pub(crate) source: Upstream<S::Item, S::Err>,
+  pub(crate) pub_chn: PublisherChannel<S::Item, S::Err>,
+  pub(crate) subscriber: S,
   pub(crate) count: usize,
   pub(crate) requested: usize,
 }
 
-impl<S> SubscriptionLike for TakeOpSubscription<S>
-where
-  S: SubscriptionLike,
-{
+/*
+impl<S> Source for TakeOpSubscription<S> where S: Subscriber {
+  type Item = S::Item;
+  type Err = S::Err;
+
+  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
+    &self.pub_chn
+  }
+}
+
+ */
+
+impl<S> Subscriber for TakeOpSubscription<S> where S: Subscriber{
+  fn connect(&mut self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
+    self.source = Upstream::INIT(chn);
+  }
+}
+
+impl<S> Observer for TakeOpSubscription<S> where S: Subscriber{
+  type Item = S::Item;
+  type Err = S::Err;
+
+  fn next(&mut self, value: Self::Item) {
+    self.subscriber.next(value);
+  }
+
+  fn error(&mut self, err: Self::Err) {
+    self.subscriber.error(err);
+  }
+
+  fn complete(&mut self) {
+    self.subscriber.complete();
+    self.source.unsubscribe();
+  }
+}
+
+impl<S> SubscriptionLike for TakeOpSubscription<S> where S: Subscriber {
   fn request(&mut self, requested: usize) {
     if self.requested < self.count {
       let request = if self.count - self.requested < requested {
@@ -46,11 +80,21 @@ where
 {
   fn actual_subscribe<O>(
     self,
-    subscriber: O,
+    mut subscriber: O,
   )
   where
     O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a,
   {
+    let (p, s) = pub_sub_channels();
+      subscriber.connect(s);
+    let op = TakeOpSubscription{
+      source: Upstream::UNINIT,
+      pub_chn: p,
+      subscriber,
+      count: 0,
+      requested: 0
+    };
+    //start_publish_loop2(op);
     /*
     let subscriber = Subscriber {
       observer: TakeObserver {

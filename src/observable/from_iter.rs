@@ -3,7 +3,6 @@ use std::iter::{Repeat, Take};
 use crate::subscriber::Subscriber;
 use std::sync::Arc;
 use std::rc::Rc;
-use std::sync::mpsc::channel;
 
 /// Creates an observable that produces values from an iterator.
 ///
@@ -203,8 +202,8 @@ mod test {
      */
   }
 
-  #[test]
-  fn from_vec() {
+  #[tokio::test(threaded_scheduler)]
+  async fn from_vec() {
     let mut hit_count = Arc::new(Mutex::new(0));
     let mut completed = Arc::new(Mutex::new(false));
     let h_c = hit_count.clone();
@@ -212,6 +211,9 @@ mod test {
     observable::from_iter(vec![0; 100])
       .subscribe_complete(move |_| *h_c.lock().unwrap() += 1, move || *com.lock().unwrap() = true);
 
+    while !*completed.lock().unwrap() {
+
+    }
     assert_eq!(*hit_count.lock().unwrap(), 100);
     assert!(*completed.lock().unwrap());
   }

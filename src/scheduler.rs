@@ -3,9 +3,12 @@ use futures::future::{lazy, AbortHandle, FutureExt};
 use std::future::Future;
 
 use crate::prelude::{SubscriptionLike, PublisherChannel, Publisher, Source, Subscriber, SubscriptionChannel};
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt, TryFutureExt};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
+use futures::channel::mpsc::Receiver;
+use async_std::future::IntoFuture;
+use futures::stream::Next;
 
 pub fn task_future<T>(
   task: impl FnOnce(T) + 'static,
@@ -193,13 +196,44 @@ pub fn start_publish_loop<P: Source + Send + 'static, S: Subscriber + Send + 'st
 }
 pub fn start_publish_loop2<P: Source + Send + 'static>(mut publisher: P) {
   tokio::spawn(futures::future::lazy(move |_| {
-    while !publisher.get_channel().unsub_chn.try_recv().is_ok() {
+    while !publisher.get_channel().unsub_chn.try_next().is_ok() {
       if let Ok(requested) = publisher.get_channel().request_chn.try_recv() {
         publisher.request(requested);
       }
     }
   }));
 }
+
+pub fn observe<S: Subscriber + Send + 'static>
+
+pub fn publish<P: Source + Send + 'static>(publisher: P, unsub: Receiver<()>, request: Receiver<usize>) {
+  tokio::spawn(do_loop(publisher, unsub, request));
+}
+
+
+async fn do_loop<P: Source + Send + 'static>(publisher: P, unsub: Receiver<()>, request: Receiver<usize>) {
+  let h = tokio::spawn(await_cancel(unsub));
+  let (f, abort) = futures::future::abortable(publish_on_next(request, publisher));
+  tokio::spawn(f);
+  h.await;
+  abort.abort();
+}
+
+async fn await_cancel(mut unsub: Receiver<()>) -> bool {
+  unsub.next().await
+      .map(|_| true)
+      .unwrap_or(false)
+}
+
+async fn publish_on_next<P: Source + Send + 'static>(mut request: Receiver<usize>, mut publisher: P) {
+  loop {
+    let req = request.next().await.unwrap();
+    publisher.request(req);
+  }
+}
+
+
+
 mod tokio_scheduler {
   use super::*;
   use std::sync::Arc;

@@ -2,7 +2,9 @@ use crate::prelude::*;
 use std::rc::{Rc};
 use std::cell::RefCell;
 use std::sync::{Weak, Arc, Mutex, RwLock};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use futures::channel::mpsc::{channel, Receiver, Sender};
+use futures::SinkExt;
+
 
 /// Implements the Observer trait and Subscription trait. While the Observer is
 /// the public API for consuming the values of an Observable, all Observers get
@@ -14,11 +16,11 @@ pub trait Subscriber: Observer + SubscriptionLike {
 }
 
 pub fn pub_sub_channels<Item, Err>() -> (PublisherChannel<Item, Err>, SubscriptionChannel<Item, Err>){
-  let item_channel = channel();
-  let err_channel = channel();
-  let complete_channel = channel();
-  let request_channel = channel();
-  let unsub_channel = channel();
+  let item_channel = channel(usize::MAX);
+  let err_channel = channel(1);
+  let complete_channel = channel(1);
+  let request_channel = channel(usize::MAX);
+  let unsub_channel = channel(1);
   (PublisherChannel {
     item_chn: item_channel.0,
     err_chn: err_channel.0,
@@ -59,6 +61,8 @@ impl<Item, Err> SubscriptionLike for Upstream<Item, Err> {
   }
 }
 
+
+
 pub struct SubscriptionChannel<Item, Err> {
   pub(crate) item_chn: Receiver<Item>,
   pub(crate) err_chn: Receiver<Err>,
@@ -80,7 +84,7 @@ impl<Item, Err> Observer for PublisherChannel<Item, Err> {
   type Err = Err;
 
   fn next(&mut self, value: Self::Item) {
-    let result = self.item_chn.send(value);
+    let result = self.item_chn.try_send(value);
     if result.is_err() {
       println!("{:?}" ,result.err().unwrap());
       panic!()
@@ -89,21 +93,21 @@ impl<Item, Err> Observer for PublisherChannel<Item, Err> {
   }
 
   fn error(&mut self, err: Self::Err) {
-    self.err_chn.send(err).unwrap();
+    self.err_chn.try_send(err).unwrap();
   }
 
   fn complete(&mut self) {
-    self.complete_chn.send(());
+    self.complete_chn.try_send(());
   }
 }
 
 impl<Item, Err> SubscriptionLike for SubscriptionChannel<Item, Err> {
   fn request(&mut self, requested: usize) {
-    self.request_chn.send(requested).unwrap();
+    self.request_chn.try_send(requested).unwrap();
   }
 
   fn unsubscribe(&mut self) {
-    self.unsub_chn.send(()).unwrap();
+    self.unsub_chn.try_send(()).unwrap();
   }
 
   fn is_closed(&self) -> bool {
