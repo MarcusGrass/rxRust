@@ -2,48 +2,43 @@ use crate::prelude::*;
 use std::sync::{Mutex, Arc};
 
 #[derive(Clone)]
-pub struct ObserverComp<N, S, C, Item> {
+pub struct ObserverComp<N, C, Item> {
   next: N,
   complete: C,
   is_stopped: bool,
-  upstream: Arc<Mutex<S>>,
   marker: TypeHint<*const Item>,
 }
-impl<N, S, C, Item> Subscriber<S> for ObserverComp<N, S, C, Item>
+impl<N, C, Item> Subscriber for ObserverComp<N, C, Item>
   where
       C: FnMut(),
       N: FnMut(Item),
-      S: SubscriptionLike
 {
-  fn on_subscribe(&self, mut sub: S) {
+  fn connect(&self, mut chn: SubscriptionChannel<Self::Item, Self::Err>) {
+    chn.request(usize::MAX);
     //*self.upstream.lock().unwrap() = sub;
     //self.upstream.lock().unwrap().request(usize::MAX);
-    sub.request(usize::MAX)
   }
 }
-impl<N, S, C, Item> SubscriptionLike for ObserverComp<N, S, C, Item>
+impl<N, C, Item> SubscriptionLike for ObserverComp<N, C, Item>
   where
       C: FnMut(),
       N: FnMut(Item),
-      S: SubscriptionLike
 {
   fn request(&mut self, requested: usize) {
     println!("{:?}", "Intern req");
   }
 
   fn unsubscribe(&mut self) {
-    self.upstream.lock().unwrap().unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
     todo!()
   }
 }
-impl<N, S, C, Item> Observer for ObserverComp<N, S, C, Item>
+impl<N, C, Item> Observer for ObserverComp<N, C, Item>
 where
   C: FnMut(),
   N: FnMut(Item),
-  S: SubscriptionLike
 {
   type Item = Item;
   type Err = ();
@@ -71,9 +66,9 @@ pub trait SubscribeComplete<'a, N, C> {
 impl<'a, S, N, C> SubscribeComplete<'a, N, C> for S
 where
   S: LocalObservable<'a, Err = ()>,
-  C: FnMut() + 'a,
-  N: FnMut(S::Item) + 'a,
-  S::Item: 'a,
+  C: FnMut() + Send + 'static,
+  N: FnMut(S::Item) + Send + 'static,
+  S::Item: Send + 'static,
 {
   type Unsub = LocalSubscription<'a>;
   fn subscribe_complete(self, next: N, complete: C) -> SubscriptionWrapper<Self::Unsub>
@@ -81,17 +76,15 @@ where
     Self: Sized,
     S::Item: 'a,
   {
-    let sub = LocalSubscription::default();
       println!("{:?}", "req");
     self.actual_subscribe(ObserverComp {
       next,
       complete,
       is_stopped: false,
-      upstream: Arc::new(Mutex::new((sub.clone()))),
       marker: TypeHint::new(),
     });
     println!("{:?}", "req");
-    SubscriptionWrapper(sub)
+    SubscriptionWrapper(LocalSubscription::default())
   }
 }
 
@@ -124,6 +117,7 @@ where
 
 #[test]
 fn raii() {
+  /*
   let mut times = 0;
   {
     let mut subject = LocalSubject::new();
@@ -137,10 +131,12 @@ fn raii() {
   }
   assert_eq!(times, 0);
 
+   */
+
 }
 
-#[test]
-fn complete() {
+#[tokio::test(threaded_scheduler)]
+async fn complete() {
   let obs = observable::from_iter(vec![1, 2, 3]);
   obs.subscribe_complete(|n| println!("{:?}", n), || println!("{:?}", "do"));
 }

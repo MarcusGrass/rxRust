@@ -2,7 +2,7 @@ use async_std::prelude::FutureExt as AsyncFutureExt;
 use futures::future::{lazy, AbortHandle, FutureExt};
 use std::future::Future;
 
-use crate::prelude::SubscriptionLike;
+use crate::prelude::{SubscriptionLike, PublisherChannel, Publisher, Source, Subscriber, SubscriptionChannel};
 use futures::StreamExt;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
@@ -181,11 +181,22 @@ fn to_interval(
     .delay(delay)
 }
 
-#[cfg(feature = "tokio-scheduler")]
+pub fn start_publish_loop<P: Source + Send + 'static, S: Subscriber + Send + 'static>(mut publisher: P, sub: S) {
+  tokio::spawn(futures::future::lazy(move |_| {
+    sub;
+    while !publisher.get_channel().unsub_chn.try_recv().is_ok() {
+      if let Ok(requested) = publisher.get_channel().request_chn.try_recv() {
+        publisher.request(requested);
+      }
+    }
+  }));
+}
+
 mod tokio_scheduler {
   use super::*;
   use std::sync::Arc;
   use tokio::runtime::Runtime;
+  use crate::prelude::{Publisher, PublisherChannel};
 
   impl SharedScheduler for Runtime {
     fn spawn<Fut>(&self, future: Fut)
@@ -204,6 +215,8 @@ mod tokio_scheduler {
       Runtime::spawn(self, future);
     }
   }
+
+
 }
 
 #[cfg(all(test, feature = "tokio-scheduler"))]

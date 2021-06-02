@@ -2,14 +2,88 @@ use crate::prelude::*;
 use std::rc::{Rc};
 use std::cell::RefCell;
 use std::sync::{Weak, Arc, Mutex, RwLock};
+use std::sync::mpsc::{Receiver, Sender, channel};
 
 /// Implements the Observer trait and Subscription trait. While the Observer is
 /// the public API for consuming the values of an Observable, all Observers get
 /// converted to a Subscriber, in order to provide Subscription capabilities.
 ///
-pub trait Subscriber<S>: Observer + SubscriptionLike {
+pub trait Subscriber: Observer + SubscriptionLike {
 
-  fn on_subscribe(&self, sub: S);
+  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>);
+}
+
+pub fn pub_sub_channels<Item, Err>() -> (PublisherChannel<Item, Err>, SubscriptionChannel<Item, Err>){
+  let item_channel = channel();
+  let err_channel = channel();
+  let complete_channel = channel();
+  let request_channel = channel();
+  let unsub_channel = channel();
+  (PublisherChannel {
+    item_chn: item_channel.0,
+    err_chn: err_channel.0,
+    complete_chn: complete_channel.0,
+    request_chn: request_channel.1,
+    unsub_chn: unsub_channel.1,
+  }, SubscriptionChannel {
+    item_chn: item_channel.1,
+    err_chn: err_channel.1,
+    complete_chn: complete_channel.1,
+    request_chn: request_channel.0,
+    unsub_chn: unsub_channel.0
+  })
+}
+
+pub struct SubscriptionChannel<Item, Err> {
+  pub(crate) item_chn: Receiver<Item>,
+  pub(crate) err_chn: Receiver<Err>,
+  pub(crate) complete_chn: Receiver<()>,
+  pub(crate) request_chn: Sender<usize>,
+  pub(crate) unsub_chn: Sender<()>,
+}
+
+pub struct PublisherChannel<Item, Err> {
+  pub(crate) item_chn: Sender<Item>,
+  pub(crate) err_chn: Sender<Err>,
+  pub(crate) complete_chn: Sender<()>,
+  pub(crate) request_chn: Receiver<usize>,
+  pub(crate) unsub_chn: Receiver<()>,
+}
+
+impl<Item, Err> Observer for PublisherChannel<Item, Err> {
+  type Item = Item;
+  type Err = Err;
+
+  fn next(&mut self, value: Self::Item) {
+    let result = self.item_chn.send(value);
+    if result.is_err() {
+      println!("{:?}" ,result.err().unwrap());
+      panic!()
+    }
+    result.ok().unwrap();
+  }
+
+  fn error(&mut self, err: Self::Err) {
+    self.err_chn.send(err).unwrap();
+  }
+
+  fn complete(&mut self) {
+    self.complete_chn.send(());
+  }
+}
+
+impl<Item, Err> SubscriptionLike for SubscriptionChannel<Item, Err> {
+  fn request(&mut self, requested: usize) {
+    self.request_chn.send(requested).unwrap();
+  }
+
+  fn unsubscribe(&mut self) {
+    self.unsub_chn.send(()).unwrap();
+  }
+
+  fn is_closed(&self) -> bool {
+    todo!()
+  }
 }
 
 pub trait LocalSubscriber<'a> : Observer + SubscriptionLike {
@@ -21,9 +95,9 @@ pub trait SharedSubscriber: Observer + SubscriptionLike {
   fn on_subscribe(&self, sub: SharedSubscription);
 }
 
-impl<S: ?Sized, T> Subscriber<T> for Box<S> where S: Subscriber<T> {
-  fn on_subscribe(&self, sub: T) {
-    (**self).on_subscribe(sub)
+impl<S: ?Sized> Subscriber for Box<S> where S: Subscriber {
+  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
+    (**self).connect(chn)
   }
 }
 

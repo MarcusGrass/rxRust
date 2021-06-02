@@ -30,7 +30,7 @@ impl<'a, S, Item, Err> LocalObservable<'a>
 where
   S: LocalObservable<'a, Item = Item, Err = Err>,
 {
-  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static>(self, subscriber: Sub) {
     self.subject.actual_subscribe(subscriber);
   }
 }
@@ -40,7 +40,7 @@ where
   S: SharedObservable<Item = Item, Err = Err>,
 {
   fn actual_subscribe<
-    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
   >(self, subscriber: Sub) {
     self.subject.actual_subscribe(subscriber);
   }

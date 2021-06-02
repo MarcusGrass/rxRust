@@ -36,7 +36,7 @@ impl<'a, Item, Err> Observable for LocalSubject<'a, Item, Err> {
 }
 
 impl<'a, Item, Err> LocalObservable<'a> for LocalSubject<'a, Item, Err> {
-  fn actual_subscribe<O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
     subscriber: O,
   ) {

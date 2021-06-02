@@ -5,7 +5,7 @@ pub trait BoxObservable<'a> {
   type Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Box<dyn Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>,
+    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + Send + 'static>,
   );
 }
 
@@ -14,7 +14,7 @@ pub trait SharedBoxObservable {
   type Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Box<dyn Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Send + Sync>,
+    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync>,
   );
 }
 
@@ -40,9 +40,12 @@ where
   type Err = T::Err;
   fn box_subscribe(
     self: Box<Self>,
-    subscriber: Box<dyn Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>,
+    subscriber: Box<dyn Subscriber<Item = Self::Item, Err = Self::Err> + Send + 'static>,
   ) {
+      /*
     self.actual_subscribe(subscriber)
+
+       */
   }
 }
 
@@ -55,7 +58,7 @@ where
   type Item = T::Item;
   type Err = T::Err;
 
-  fn box_subscribe(self: Box<Self>, subscriber: Box<dyn Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync>) {
+  fn box_subscribe(self: Box<Self>, subscriber: Box<dyn Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync>) {
     self.actual_subscribe(subscriber);
   }
 }
@@ -81,8 +84,11 @@ impl<'a, Item, Err> Observable for LocalBoxOp<'a, Item, Err> {
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalBoxOp<'a, Item, Err> {
-  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    /*
     self.0.box_subscribe(Box::new(subscriber));
+
+     */
   }
 }
 
@@ -93,7 +99,7 @@ impl<Item, Err> Observable for SharedBoxOp<Item, Err> {
 
 impl<Item, Err> SharedObservable for SharedBoxOp<Item, Err> {
   fn actual_subscribe<
-    S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
   >(self, subscriber: S) {
     self.0.box_subscribe(Box::new(subscriber));
   }
@@ -104,8 +110,11 @@ impl<'a, Item, Err> Observable for LocalCloneBoxOp<'a, Item, Err> {
   type Err = Err;
 }
 impl<'a, Item, Err> LocalObservable<'a> for LocalCloneBoxOp<'a, Item, Err> {
-  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+    /*
     self.0.box_subscribe(Box::new(subscriber));
+
+     */
   }
 }
 
@@ -115,7 +124,7 @@ impl<Item, Err> Observable for SharedCloneBoxOp<Item, Err> {
 }
 impl<Item, Err> SharedObservable for SharedCloneBoxOp<Item, Err> {
   fn actual_subscribe<
-    S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
   >(self, subscriber: S) {
     self.0.box_subscribe(Box::new(subscriber));
   }

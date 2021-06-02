@@ -8,7 +8,7 @@ pub struct Shared<R>(pub(crate) R);
 
 pub trait SharedObservable: Observable {
   fn actual_subscribe<
-    S: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static
+    S: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static
   >(
     self,
     subscriber: S,
@@ -32,7 +32,7 @@ where
 {
 
   fn actual_subscribe<
-    S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
   >(self, subscriber: S) {
     self.0.actual_subscribe(subscriber)
   }

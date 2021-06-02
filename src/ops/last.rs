@@ -44,7 +44,7 @@ where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Clone,
 {
-  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
     todo!()
   }
 }
@@ -55,7 +55,7 @@ where
   Item: Send + Sync + 'static + Clone,
 {
   fn actual_subscribe<
-    Sub: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
+    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
   >(self, subscriber: Sub) {
     todo!()
   }

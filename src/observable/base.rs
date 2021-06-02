@@ -12,7 +12,15 @@ pub trait LocalPublisherFactory<'a>: PublisherFactory {
     subscriber: S,
   )
   where
-    S: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a;
+    S: Subscriber<Item = Self::Item, Err = Self::Err> + Send + 'static;
+}
+
+pub trait Source: SubscriptionLike {
+  type Item: Send + 'static;
+  type Err: Send + 'static;
+
+  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err>;
+
 }
 
 pub trait SharedPublisherFactory: PublisherFactory {
@@ -21,7 +29,7 @@ pub trait SharedPublisherFactory: PublisherFactory {
     subscriber: S,
   )
   where
-    S: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Send + Sync + 'static;
+    S: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static;
 }
 
 #[derive(Clone)]
@@ -43,7 +51,7 @@ impl<'a, Emit> LocalObservable<'a> for ObservableBase<Emit>
 where
   Emit: LocalPublisherFactory<'a>,
 {
-  fn actual_subscribe<Sub: Subscriber<LocalSubscription<'a>, Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static >(self, subscriber: Sub) {
     println!("{:?}", "sub");
     self.0.subscribe(subscriber)
   }
@@ -55,7 +63,7 @@ where
 {
 
   fn actual_subscribe<
-    S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Sync + Send + 'static,
+    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static,
   >(self, subscriber: S) {
     self.0.subscribe(subscriber)
   }

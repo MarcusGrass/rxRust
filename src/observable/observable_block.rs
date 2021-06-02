@@ -5,34 +5,29 @@ use std::time::Duration;
 use std::cell::RefCell;
 
 #[derive(Clone)]
-pub struct ObserverBlock<N, S, Item> {
+pub struct ObserverBlock<N, Item> {
   next: N,
   is_stopped: Arc<Mutex<bool>>,
-  upstream: Arc<RwLock<S>>,
   marker: TypeHint<(*const Item)>,
 }
-impl<Item, S, N> Subscriber<S> for ObserverBlock<N, S, Item>
+impl<Item, N> Subscriber for ObserverBlock<N, Item>
   where
       N: FnMut(Item),
-      S: SubscriptionLike
 {
 
-  fn on_subscribe(&self, sub: S) {
-    *self.upstream.write().unwrap() = sub;
+  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
   }
 }
 
-impl<Item, S, N> SubscriptionLike for ObserverBlock<N, S, Item>
+impl<Item, N> SubscriptionLike for ObserverBlock<N, Item>
   where
       N: FnMut(Item),
-      S: SubscriptionLike,
 {
   fn request(&mut self, requested: usize) {
 
   }
 
   fn unsubscribe(&mut self) {
-    self.upstream.write().unwrap().unsubscribe();
   }
 
   fn is_closed(&self) -> bool {
@@ -40,7 +35,7 @@ impl<Item, S, N> SubscriptionLike for ObserverBlock<N, S, Item>
   }
 }
 
-impl<Item, S, N> Observer for ObserverBlock<N, S, Item>
+impl<Item, N> Observer for ObserverBlock<N, Item>
 where
   N: FnMut(Item)
 {
@@ -94,7 +89,6 @@ where
     let subscriber = ObserverBlock {
       next,
       is_stopped: stopped,
-      upstream: Arc::new(RwLock::default()),
       marker: TypeHint::new(),
     };
     self.actual_subscribe(subscriber);

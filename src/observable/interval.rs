@@ -50,7 +50,8 @@ where
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<LocalSubscription<'static>, Item=Self::Item, Err=Self::Err> + 'static {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'static {
+    /*
     let mut publisher = Rc::new(LocalIntervalPublisher {
       scheduler: self.scheduler,
       observer: Arc::new(RwLock::new(subscriber)),
@@ -58,7 +59,9 @@ where
       at: self.at,
       dur: self.dur,
     });
-    publisher.clone().observer.write().unwrap().on_subscribe(LocalSubscription::new(publisher));
+    publisher.clone().observer.write().unwrap().connect(LocalSubscription::new(publisher));
+
+     */
   }
 }
 
@@ -68,7 +71,8 @@ where
 {
 
   fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<SharedSubscription, Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let mut publisher = Arc::new(SharedIntervalPublisher {
       scheduler: self.scheduler,
       observer: Arc::new(RwLock::new(subscriber)),
@@ -76,7 +80,9 @@ where
       at: self.at,
       dur: self.dur,
     });
-    publisher.clone().observer.write().unwrap().on_subscribe(SharedSubscription::new(publisher));
+    publisher.clone().observer.write().unwrap().connect(SharedSubscription::new(publisher));
+
+     */
   }
 }
 

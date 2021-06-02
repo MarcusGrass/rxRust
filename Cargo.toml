@@ -28,11 +28,11 @@ features= ["thread-pool"]
 
 [dependencies.tokio]
 version = "0.2.22"
-features = ["rt-threaded", "rt-core"]
+features = ["rt-threaded", "rt-core", "macros"]
 optional = true
 
 [features]
-default = ["futures-scheduler"]
+default = ["futures-scheduler", "tokio-scheduler"]
 tokio-scheduler = ["tokio"]
 futures-scheduler = []
 

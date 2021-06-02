@@ -27,7 +27,7 @@ where
   F: FnMut() + 'static,
 {
 
-  fn actual_subscribe<O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
     subscriber: O,
   )  {
@@ -58,7 +58,7 @@ where
 {
 
   fn actual_subscribe<
-    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
     subscriber: O,

@@ -13,7 +13,7 @@ pub struct ObserverBlockAll<N, E, C, Sub, Item, Err> {
   marker: TypeHint<(*const Item, *const Err)>,
 }
 
-impl<Item, Err, Sub, N, E, C> Subscriber<Sub> for ObserverBlockAll<N, E, C, Sub, Item, Err>
+impl<Item, Err, Sub, N, E, C> Subscriber for ObserverBlockAll<N, E, C, Sub, Item, Err>
   where
       C: FnMut(),
       N: FnMut(Item),
@@ -21,9 +21,7 @@ impl<Item, Err, Sub, N, E, C> Subscriber<Sub> for ObserverBlockAll<N, E, C, Sub,
       Sub: SubscriptionLike,
 {
 
-  fn on_subscribe(&self, sub: Sub) {
-    *self.upstream.write().unwrap() = sub;
-    self.upstream.write().unwrap().request(usize::MAX)
+  fn connect(&self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
   }
 }
 

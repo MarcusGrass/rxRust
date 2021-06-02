@@ -23,7 +23,7 @@ where
   SD: LocalScheduler + 'static,
 {
 
-  fn actual_subscribe<O: Subscriber<LocalSubscription<'static>, Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
     self,
     subscriber: O,
   ) {
@@ -55,7 +55,7 @@ where
   SD: SharedScheduler + Send + 'static,
 {
   fn actual_subscribe<
-    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   >(
     self,
     subscriber: O,

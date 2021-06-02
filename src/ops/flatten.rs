@@ -295,7 +295,7 @@ where
     subscriber: O,
   )
   where
-    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
   {
     /*
     let state = Arc::new(Mutex::new(FlattenState::new()));
@@ -374,7 +374,7 @@ where
     subscriber: O,
   )
   where
-    O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a,
   {
     /*
     let state = Rc::new(RefCell::new(FlattenState::new()));

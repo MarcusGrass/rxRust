@@ -29,7 +29,7 @@ where
   Sampling::Item: Send + Sync + 'static + Clone,
 {
   fn actual_subscribe<
-    O: Subscriber<SharedSubscription, Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
+    O: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
   >(
     self,
     subscriber: O,
@@ -61,7 +61,7 @@ where
   Source: LocalObservable<'a> + 'a,
   Sampling: LocalObservable<'a, Err = Source::Err> + 'a,
 {
-  fn actual_subscribe<O: Subscriber<LocalSubscription<'a>, Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
     self,
     subscriber: O,
   ) {
