@@ -3,6 +3,7 @@ use std::iter::{Repeat, Take};
 use crate::subscriber::Subscriber;
 use std::sync::Arc;
 use std::rc::Rc;
+use futures::channel::mpsc::Sender;
 
 /// Creates an observable that produces values from an iterator.
 ///
@@ -38,14 +39,13 @@ where
   ObservableBase::new(IterPublisherFactory(iter, TypeHint::new()))
 }
 
-pub struct IterPublisher<Iter, Item, S>
+pub struct IterPublisher<Iter, Item: Send + 'static>
   where
       Iter: IntoIterator<Item=Item>,
 {
   it: Iter,
   cursor: usize,
-  observer: PublisherChannel<Iter::Item, ()>,
-  subscriber: S
+  observer: Sender<SubscriberChannelItem<Iter::Item, ()>>,
 }
 
 #[derive(Clone)]
@@ -66,17 +66,14 @@ where
     Iter: IntoIterator<Item=Item> + Clone + Send + Sync + 'static
 {
 
-  fn subscribe<S>(self, mut subscriber: S)  where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
-    let (pub_ch, sub_ch) = pub_sub_channels();
-    subscriber.connect(sub_ch);
+  fn subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     let mut publisher = IterPublisher {
       it: self.0,
       cursor: 0,
-      observer: pub_ch,
-      subscriber
+      observer: channel.item_chn,
     };
-    start_publish_loop2(publisher);
+    println!("Publish");
+    publish(publisher, channel.request_chn);
   }
 }
 
@@ -87,37 +84,33 @@ where
 {
   fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let (pub_ch, sub_ch) = pub_sub_channels();
     subscriber.connect(sub_ch);
     let mut publisher = IterPublisher {
       it: self.0,
       cursor: 0,
-      observer: pub_ch,
-      subscriber
+      observer: *ch.item_chn,
     };
-    start_publish_loop2(publisher);
+    start_publish_loop2(publisher, *ch.request_chn);
+
+     */
   }
 }
 
-impl<Iter, Item, S> Source for IterPublisher<Iter, Item, S>
+impl<Iter, Item> Source for IterPublisher<Iter, Item>
   where
       Item: Send + 'static,
       Iter: IntoIterator<Item=Item> + Send + Sync + Clone + 'static,
-      S: Subscriber<Item=Item, Err=()> + Send + 'static
 {
   type Item = Iter::Item;
   type Err = ();
-
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
-    &self.observer
-  }
 }
 
-impl<Iter, Item, S> SubscriptionLike for IterPublisher<Iter, Item, S>
+impl<Iter, Item> SubscriptionLike for IterPublisher<Iter, Item>
 where
     Item: Send + 'static,
     Iter: IntoIterator<Item=Item> + Clone,
-    S: Subscriber<Item=Item, Err=()> + Send + 'static
 {
   fn request(&mut self, requested: usize) {
     println!("{:?}", "iter req");
@@ -128,11 +121,11 @@ where
       v = it.next();
       println!("send: {}", v.is_some());
       if v.is_some() {
-        self.subscriber.next(v.unwrap());
+        self.observer.next(v.unwrap());
         provided += 1;
       } else {
         println!("complete: {}", v.is_none());
-        self.subscriber.complete();
+        self.observer.complete();
         break;
       }
       if provided >= requested {

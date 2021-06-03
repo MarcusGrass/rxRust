@@ -11,7 +11,7 @@ observable_proxy_impl!(DistinctOp, S);
 
 macro_rules! distinct_impl {
   ( $subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -31,12 +31,12 @@ macro_rules! distinct_impl {
 }
 }
 
-impl<'a, S, Item> LocalObservable<'a> for DistinctOp<S>
+impl<'a, S, Item: Send + 'static> LocalObservable<'a> for DistinctOp<S>
 where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Eq + Hash + Clone,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -46,9 +46,7 @@ where
   S: SharedObservable<Item = Item>,
   Item: Hash + Eq + Clone + Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -58,7 +56,7 @@ struct DistinctObserver<O, Item> {
   seen: HashSet<Item>,
 }
 
-impl<O, Item, Err> Observer for DistinctObserver<O, Item>
+impl<O, Item: Send + 'static, Err: Send + 'static> Observer for DistinctObserver<O, Item>
 where
   O: Observer<Item = Item, Err = Err>,
   Item: Hash + Eq + Clone,

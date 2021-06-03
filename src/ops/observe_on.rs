@@ -22,9 +22,9 @@ where
   S::Err: Clone + 'static,
   SD: LocalScheduler + 'static,
 {
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
-    self,
-    subscriber: O,
+  fn actual_subscribe(
+      self,
+      channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let Subscriber {
@@ -53,11 +53,9 @@ where
   S::Err: Clone + Send + 'static,
   SD: SharedScheduler + Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let Subscriber {
@@ -125,7 +123,7 @@ where
   }
 }
 
-impl<Item, Err, O, SD> Observer for SharedObserver<O, SD>
+impl<Item: Send + 'static, Err: Send + 'static, O, SD> Observer for SharedObserver<O, SD>
 where
   Item: Clone + Send + 'static,
   Err: Clone + Send + 'static,
@@ -153,7 +151,7 @@ impl<O: 'static, SD: LocalScheduler + 'static> LocalObserver<'static, O, SD> {
     self.subscription.add(subscription);
   }
 }
-impl<Item, Err, O, SD> Observer for LocalObserver<'static, O, SD>
+impl<Item: Send + 'static, Err: Send + 'static, O, SD> Observer for LocalObserver<'static, O, SD>
 where
   Item: Clone + 'static,
   Err: Clone + 'static,

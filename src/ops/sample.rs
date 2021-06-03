@@ -28,11 +28,9 @@ where
   Sampling: SharedObservable<Err = Source::Err>,
   Sampling::Item: Send + Sync + 'static + Clone,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let subscription = subscriber.subscription;
@@ -61,9 +59,9 @@ where
   Source: LocalObservable<'a> + 'a,
   Sampling: LocalObservable<'a, Err = Source::Err> + 'a,
 {
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let subscription = subscriber.subscription;
@@ -108,7 +106,7 @@ impl<Item, O, Unsub> SampleObserver<Item, O, Unsub> {
   }
 }
 
-impl<Item, Err, O, Unsub> Observer for SampleObserver<Item, O, Unsub>
+impl<Item: Send + 'static, Err: Send + 'static, O, Unsub> Observer for SampleObserver<Item, O, Unsub>
 where
   O: Observer<Item = Item, Err = Err>,
   Unsub: SubscriptionLike,
@@ -154,7 +152,7 @@ where
 }
 struct SamplingObserver<Item, O>(O, TypeHint<*const Item>);
 
-impl<Item, Item2, Err, O> Observer for SamplingObserver<Item2, O>
+impl<Item: Send + 'static, Item2: Send + 'static, Err: Send + 'static, O> Observer for SamplingObserver<Item2, O>
 where
   O: DrainValue<Item, Err> + Observer<Item = Item, Err = Err>,
 {

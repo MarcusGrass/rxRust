@@ -49,8 +49,7 @@ where
     SD: LocalScheduler + 'static,
 {
 
-  fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'static {
+  fn subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     /*
     let mut publisher = Rc::new(LocalIntervalPublisher {
       scheduler: self.scheduler,

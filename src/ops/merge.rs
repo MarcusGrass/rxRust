@@ -28,9 +28,9 @@ where
   S2: LocalObservable<'a, Item = S1::Item, Err = S1::Err>,
 {
 
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
-    self,
-    subscriber: O,
+  fn actual_subscribe(
+      self,
+      channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let subscription = subscriber.subscription;
@@ -80,11 +80,9 @@ where
   S1: SharedObservable,
   S2: SharedObservable<Item = S1::Item, Err = S1::Err>,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let subscription = subscriber.subscription;
@@ -115,7 +113,7 @@ pub struct MergeObserver<O, Unsub> {
   completed_one: bool,
 }
 
-impl<Item, Err, O, Unsub> Observer for MergeObserver<O, Unsub>
+impl<Item: Send + 'static, Err: Send + 'static, O, Unsub> Observer for MergeObserver<O, Unsub>
 where
   O: Observer<Item = Item, Err = Err>,
   Unsub: SubscriptionLike,

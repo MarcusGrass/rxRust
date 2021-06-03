@@ -103,7 +103,7 @@ where
   }
 }
 
-impl<'a, Item, Err, S> Observable for LocalRefCount<'a, S, Item, Err>
+impl<'a, Item: Send + 'static, Err: Send + 'static, S> Observable for LocalRefCount<'a, S, Item, Err>
 where
   S: LocalObservable<'a, Item = Item, Err = Err>,
 {
@@ -111,15 +111,15 @@ where
   type Err = Err;
 }
 
-impl<'a, Item, Err, S> LocalObservable<'a> for LocalRefCount<'a, S, Item, Err>
+impl<'a, Item: Send + 'static, Err: Send + 'static, S> LocalObservable<'a> for LocalRefCount<'a, S, Item, Err>
 where
   S: LocalObservable<'a, Item = Item, Err = Err> + Clone,
   Item: Clone + 'a,
   Err: Clone + 'a,
 {
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let mut inner = (self.0).0.borrow_mut();
@@ -137,7 +137,7 @@ where
   }
 }
 
-impl<Item, Err, S> Observable for SharedRefCount<S, Item, Err>
+impl<Item: Send + 'static, Err: Send + 'static, S> Observable for SharedRefCount<S, Item, Err>
 where
   S: SharedObservable<Item = Item, Err = Err>,
 {
@@ -151,11 +151,9 @@ where
   Item: Clone + Send + Sync + 'static,
   Err: Clone + Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let mut inner = (self.0).0.lock().unwrap();

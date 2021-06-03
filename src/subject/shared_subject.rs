@@ -22,17 +22,15 @@ impl<Item, Err> SharedSubject<Item, Err> {
   }
 }
 
-impl<Item, Err> Observable for SharedSubject<Item, Err> {
+impl<Item: Send + 'static, Err: Send + 'static> Observable for SharedSubject<Item, Err> {
   type Item = Item;
   type Err = Err;
 }
 
-impl<Item, Err> SharedObservable for SharedSubject<Item, Err> {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+impl<Item: Send + 'static, Err: Send + 'static> SharedObservable for SharedSubject<Item, Err> {
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let subscription = subscriber.subscription.clone();

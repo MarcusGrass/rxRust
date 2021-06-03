@@ -10,7 +10,7 @@ pub struct ObserverBlock<N, Item> {
   is_stopped: Arc<Mutex<bool>>,
   marker: TypeHint<(*const Item)>,
 }
-impl<Item, N> Subscriber for ObserverBlock<N, Item>
+impl<Item: Send + 'static, N> Subscriber for ObserverBlock<N, Item>
   where
       N: FnMut(Item),
 {
@@ -35,7 +35,7 @@ impl<Item, N> SubscriptionLike for ObserverBlock<N, Item>
   }
 }
 
-impl<Item, N> Observer for ObserverBlock<N, Item>
+impl<Item: Send + 'static, N> Observer for ObserverBlock<N, Item>
 where
   N: FnMut(Item)
 {
@@ -76,7 +76,7 @@ impl<'a, S, N> SubscribeBlocking<'a, N> for Shared<S>
 where
   S: SharedObservable<Err = ()>,
   N: FnMut(S::Item) + Send + Sync + 'static,
-  S::Item: 'static,
+  S::Item: Send + 'static,
 {
   type Unsub = SharedSubscription;
 
@@ -84,6 +84,7 @@ where
   where
     Self: Sized,
   {
+    /*
     let stopped = Arc::new(Mutex::new(false));
     let stopped_c = Arc::clone(&stopped);
     let subscriber = ObserverBlock {
@@ -95,7 +96,9 @@ where
     while !*stopped_c.lock().unwrap() {
       std::thread::sleep(Duration::from_millis(1))
     }
+     */
     SubscriptionWrapper(SharedSubscription::default())
+
   }
 }
 

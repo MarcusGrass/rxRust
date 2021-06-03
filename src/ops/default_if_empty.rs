@@ -15,7 +15,7 @@ where
 #[doc(hidden)]
 macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -40,7 +40,7 @@ where
   S: LocalObservable<'a>,
   S::Item: Clone + 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -50,9 +50,7 @@ where
   S: SharedObservable,
   S::Item: Clone + Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -63,7 +61,7 @@ pub struct DefaultIfEmptyObserver<O, Item> {
   default_value: Item,
 }
 
-impl<Item, Err, O> Observer for DefaultIfEmptyObserver<O, Item>
+impl<Item: Send + 'static, Err: Send + 'static, O> Observer for DefaultIfEmptyObserver<O, Item>
 where
   O: Observer<Item = Item, Err = Err>,
   Item: Clone,

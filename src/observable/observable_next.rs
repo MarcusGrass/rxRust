@@ -7,7 +7,7 @@ pub struct ObserverN<N, Item> {
   marker: TypeHint<*const Item>,
 }
 
-impl<Item, N> Observer for ObserverN<N, Item>
+impl<Item: Send + 'static, N> Observer for ObserverN<N, Item>
 where
   N: FnMut(Item),
 {

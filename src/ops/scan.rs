@@ -19,7 +19,7 @@ pub struct ScanObserver<Observer, BinaryOp, OutputItem, InputItem> {
 #[doc(hidden)]
 macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -40,7 +40,7 @@ macro_rules! observable_impl {
 }
 }
 
-impl<OutputItem, Source, BinaryOp> Observable for ScanOp<Source, BinaryOp, OutputItem>
+impl<OutputItem: Send + 'static, Source, BinaryOp> Observable for ScanOp<Source, BinaryOp, OutputItem>
 where
   Source: Observable,
   OutputItem: Clone,
@@ -56,7 +56,7 @@ where
 // Once instantiated, it will have a `actual_subscribe` method in it.
 // Note: we're accepting such subscribers that accept `Output` as their
 // `Item` type.
-impl<'a, OutputItem, Source, BinaryOp> LocalObservable<'a>
+impl<'a, OutputItem: Send + 'static, Source, BinaryOp> LocalObservable<'a>
   for ScanOp<Source, BinaryOp, OutputItem>
 where
   Source: LocalObservable<'a>,
@@ -64,7 +64,7 @@ where
   BinaryOp: FnMut(OutputItem, Source::Item) -> OutputItem + 'a,
   Source::Item: 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -77,9 +77,7 @@ where
   Source::Item: 'static,
   BinaryOp: FnMut(OutputItem, Source::Item) -> OutputItem + Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: S) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -87,7 +85,7 @@ where
 // We're making `ScanObserver` being able to be subscribed to other observables
 // by implementing `Observer` trait. Thanks to this, it is able to observe
 // sources having `Item` type as its `InputItem` type.
-impl<InputItem, Err, Source, BinaryOp, OutputItem> Observer
+impl<InputItem: Send + 'static, Err: Send + 'static, Source, BinaryOp, OutputItem> Observer
   for ScanObserver<Source, BinaryOp, OutputItem, InputItem>
 where
   Source: Observer<Item = OutputItem, Err = Err>,

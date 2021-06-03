@@ -9,8 +9,8 @@ use std::sync::{Arc, Mutex};
 /// `Item` the type of the elements being emitted.
 /// `Err`the type of the error may propagating.
 pub trait Observer {
-  type Item;
-  type Err;
+  type Item: Send + 'static;
+  type Err: Send + 'static;
   fn next(&mut self, value: Self::Item);
   fn error(&mut self, err: Self::Err);
   fn complete(&mut self);
@@ -56,7 +56,7 @@ macro_rules! is_stopped_proxy_impl {
 }
 }
 
-impl<Item, Err, T> Observer for Arc<Mutex<T>>
+impl<Item: Send + 'static, Err: Send + 'static, T> Observer for Arc<Mutex<T>>
 where
   T: Observer<Item = Item, Err = Err>,
 {
@@ -67,7 +67,7 @@ where
   fn complete(&mut self) { self.lock().unwrap().complete(); }
 }
 
-impl<Item, Err, T> Observer for Rc<RefCell<T>>
+impl<Item: Send + 'static, Err: Send + 'static, T> Observer for Rc<RefCell<T>>
 where
   T: Observer<Item = Item, Err = Err>,
 {
@@ -78,7 +78,7 @@ where
   fn complete(&mut self) { self.borrow_mut().complete(); }
 }
 
-impl<Item, Err, T> Observer for Box<T>
+impl<Item: Send + 'static, Err: Send + 'static, T> Observer for Box<T>
 where
   T: Observer<Item = Item, Err = Err> + ?Sized,
 {

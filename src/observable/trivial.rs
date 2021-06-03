@@ -2,6 +2,7 @@ use crate::prelude::*;
 use crate::subscriber::Subscriber;
 use std::sync::Arc;
 use std::rc::Rc;
+use futures::channel::mpsc::Sender;
 
 /// Creates an observable that emits no items, just terminates with an error.
 ///
@@ -15,21 +16,19 @@ pub fn throw<Err>(e: Err) -> ObservableBase<ThrowPublisherFactory<Err>> {
 #[derive(Clone)]
 pub struct ThrowPublisherFactory<Err>(Err);
 
-impl<Err> PublisherFactory for ThrowPublisherFactory<Err> {
+impl<Err: Send + 'static> PublisherFactory for ThrowPublisherFactory<Err> {
   type Item = ();
   type Err = Err;
 }
 
 impl<'a, Err: Clone + Send + 'static> LocalPublisherFactory<'a> for ThrowPublisherFactory<Err> {
-  fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
+  fn subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     {
-      let (p, s) = pub_sub_channels();
       let mut publisher = ThrowPublisher {
         err: self.0,
-        sub: p,
+        sub: channel.item_chn,
       };
-      start_publish_loop(publisher, subscriber)
+      publish(publisher, channel.request_chn)
     }
   }
 }
@@ -39,18 +38,21 @@ impl<Err: Clone + Send + Sync + 'static> SharedPublisherFactory
 {
   fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let (p, s) = pub_sub_channels();
     let mut publisher = ThrowPublisher {
       err: self.0,
       sub: p,
     };
     start_publish_loop(publisher, subscriber)
+
+     */
   }
 }
 
-struct ThrowPublisher<Err: Clone> {
+struct ThrowPublisher<Err: Clone + Send + 'static> {
   err: Err,
-  sub: PublisherChannel<(), Err>,
+  sub: Sender<SubscriberChannelItem<(), Err>>,
 }
 
 impl<Err: Clone + Send + 'static> Source for ThrowPublisher<Err>
@@ -58,12 +60,9 @@ impl<Err: Clone + Send + 'static> Source for ThrowPublisher<Err>
   type Item = ();
   type Err = Err;
 
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
-    &self.sub
-  }
 }
 
-impl<Err: Clone> SubscriptionLike for ThrowPublisher<Err>
+impl<Err: Clone + Send + 'static> SubscriptionLike for ThrowPublisher<Err>
 where
 {
   fn request(&mut self, _: usize) { self.sub.error(self.err.clone()); }
@@ -96,22 +95,19 @@ pub struct EmptyEmitter<Item>(TypeHint<Item>);
 #[derive(Clone)]
 pub struct EmptyPublisherFactory<Item>(TypeHint<Item>);
 
-impl<Item> PublisherFactory for EmptyPublisherFactory<Item> {
+impl<Item: Send + 'static> PublisherFactory for EmptyPublisherFactory<Item> {
   type Item = Item;
   type Err = ();
 }
 
-struct EmptyPublisher<Item>(PublisherChannel<Item, ()>);
+struct EmptyPublisher<Item: Send + 'static>(Sender<SubscriberChannelItem<Item, ()>>);
 impl<Item: Send + 'static> Source for EmptyPublisher<Item> {
   type Item = Item;
   type Err = ();
 
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
-    &self.0
-  }
 }
 
-impl<Item> SubscriptionLike for EmptyPublisher<Item>
+impl<Item: Send + 'static> SubscriptionLike for EmptyPublisher<Item>
 {
   fn request(&mut self, _: usize) { self.0.complete(); }
 
@@ -121,12 +117,9 @@ impl<Item> SubscriptionLike for EmptyPublisher<Item>
 }
 
 impl<'a, Item: Send + 'static> LocalPublisherFactory<'a> for EmptyPublisherFactory<Item> {
-  fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
-    let (p, s) = pub_sub_channels();
-    let mut publisher = EmptyPublisher(p);
-    subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+  fn subscribe(self, mut channel: PublisherChannel<Self::Item, Self::Err>) {
+    let mut publisher = EmptyPublisher(channel.item_chn);
+    publish(publisher, channel.request_chn)
   }
 }
 
@@ -134,10 +127,13 @@ impl<'a, Item: Send + 'static> LocalPublisherFactory<'a> for EmptyPublisherFacto
 impl<Item: Send + 'static> SharedPublisherFactory for EmptyPublisherFactory<Item> {
   fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let (p, s) = pub_sub_channels();
     let mut publisher = EmptyPublisher(p);
     subscriber.connect(s);
     start_publish_loop(publisher, subscriber)
+
+     */
   }
 }
 /// Creates an observable that never emits anything.
@@ -159,8 +155,7 @@ impl PublisherFactory for NeverEmitterPublisherFactory {
 }
 
 impl<'a> LocalPublisherFactory<'a> for NeverEmitterPublisherFactory {
-  fn subscribe<S>(self, _subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
+  fn subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
   }
 }
 

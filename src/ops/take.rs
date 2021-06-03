@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::{complete_proxy_impl, error_proxy_impl};
 use crate::subscriber::Subscriber;
+use futures::channel::mpsc::Sender;
 
 #[derive(Clone)]
 pub struct TakeOp<S> {
@@ -8,12 +9,12 @@ pub struct TakeOp<S> {
   pub(crate) count: usize,
 }
 
-pub struct TakeOpSubscription<S> where S: Subscriber {
-  pub(crate) source: Upstream<S::Item, S::Err>,
-  pub(crate) pub_chn: PublisherChannel<S::Item, S::Err>,
-  pub(crate) subscriber: S,
+pub struct TakeOpSubscription<Item: Send + 'static, Err: Send + 'static> {
+  pub(crate) observer: Sender<SubscriberChannelItem<Item, Err>>,
+  pub(crate) upstream: Sender<PublisherChannelItem>,
   pub(crate) count: usize,
   pub(crate) requested: usize,
+  pub(crate) delivered: usize,
 }
 
 /*
@@ -28,47 +29,55 @@ impl<S> Source for TakeOpSubscription<S> where S: Subscriber {
 
  */
 
-impl<S> Subscriber for TakeOpSubscription<S> where S: Subscriber{
+impl<Item: Send + 'static, Err: Send + 'static> Subscriber for TakeOpSubscription<Item, Err> {
   fn connect(&mut self, chn: SubscriptionChannel<Self::Item, Self::Err>) {
-    self.source = Upstream::INIT(chn);
+    // self.source = Upstream::INIT(chn);
   }
 }
 
-impl<S> Observer for TakeOpSubscription<S> where S: Subscriber{
-  type Item = S::Item;
-  type Err = S::Err;
+impl<Item: Send + 'static, Err: Send + 'static> Observer for TakeOpSubscription<Item, Err>{
+  type Item = Item;
+  type Err = Err;
 
   fn next(&mut self, value: Self::Item) {
-    self.subscriber.next(value);
+    self.observer.next(value);
+    self.delivered += 1;
+    if self.delivered >= self.count {
+      self.observer.complete();
+    }
   }
 
   fn error(&mut self, err: Self::Err) {
-    self.subscriber.error(err);
+    self.observer.error(err);
   }
 
   fn complete(&mut self) {
-    self.subscriber.complete();
-    self.source.unsubscribe();
+    self.observer.complete();
   }
 }
 
-impl<S> SubscriptionLike for TakeOpSubscription<S> where S: Subscriber {
+impl<Item: Send + 'static, Err: Send + 'static> SubscriptionLike for TakeOpSubscription<Item, Err> {
   fn request(&mut self, requested: usize) {
+    if self.count == 0 {
+      self.observer.complete();
+      self.upstream.unsubscribe();
+    }
     if self.requested < self.count {
       let request = if self.count - self.requested < requested {
         self.count - self.requested
       } else {
         requested
       };
-      self.source.request(request);
+      println!("{:?} {}", "take op upstream req ", request);
+      self.upstream.request(request);
       self.requested += request;
     }
   }
 
-  fn unsubscribe(&mut self) { self.source.unsubscribe(); }
+  fn unsubscribe(&mut self) { self.upstream.unsubscribe(); }
 
   fn is_closed(&self) -> bool {
-    self.source.is_closed() // Todo: check correctness
+      todo!()
   }
 }
 
@@ -78,22 +87,20 @@ impl<'a, S> LocalObservable<'a> for TakeOp<S>
 where
   S: LocalObservable<'a>,
 {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
-    mut subscriber: O,
-  )
-  where
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a,
-  {
+    mut channel: PublisherChannel<Self::Item, Self::Err>,
+  ) {
     let (p, s) = pub_sub_channels();
-      subscriber.connect(s);
     let op = TakeOpSubscription{
-      source: Upstream::UNINIT,
-      pub_chn: p,
-      subscriber,
-      count: 0,
-      requested: 0
+      observer: channel.item_chn,
+      upstream: s.request_chn,
+      count: self.count,
+      requested: 0,
+      delivered: 0
     };
+    self.source.actual_subscribe(p);
+    observe_op(op, s.item_chn, channel.request_chn);
     //start_publish_loop2(op);
     /*
     let subscriber = Subscriber {
@@ -119,12 +126,10 @@ impl<S> SharedObservable for TakeOp<S>
 where
   S: SharedObservable,
 {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   )
-  where
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Send + Sync + 'static,
   {
     /*
     let subscriber = Subscriber {
@@ -152,7 +157,7 @@ pub struct TakeObserver<O> {
   hits: usize,
 }
 
-impl<O, Item, Err> Observer for TakeObserver<O>
+impl<O, Item: Send + 'static, Err: Send + 'static> Observer for TakeObserver<O>
 where
   O: Observer<Item = Item, Err = Err>,
 {

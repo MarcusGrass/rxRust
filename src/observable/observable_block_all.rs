@@ -13,7 +13,7 @@ pub struct ObserverBlockAll<N, E, C, Sub, Item, Err> {
   marker: TypeHint<(*const Item, *const Err)>,
 }
 
-impl<Item, Err, Sub, N, E, C> Subscriber for ObserverBlockAll<N, E, C, Sub, Item, Err>
+impl<Item: Send + 'static, Err: Send + 'static, Sub, N, E, C> Subscriber for ObserverBlockAll<N, E, C, Sub, Item, Err>
   where
       C: FnMut(),
       N: FnMut(Item),
@@ -44,7 +44,7 @@ impl<Item, Err, S, N, E, C> SubscriptionLike for ObserverBlockAll<N, E, C, S, It
       todo!()
   }
 }
-impl<Item, Err, S, N, E, C> Observer for ObserverBlockAll<N, E, C, S, Item, Err>
+impl<Item: Send + 'static, Err: Send + 'static, S, N, E, C> Observer for ObserverBlockAll<N, E, C, S, Item, Err>
 where
   C: FnMut(),
   N: FnMut(Item),
@@ -101,8 +101,8 @@ where
   N: FnMut(S::Item) + Send + Sync + 'static,
   E: FnMut(S::Err) + Send + Sync + 'static,
   C: FnMut() + Send + Sync + 'static,
-  S::Err: 'static,
-  S::Item: 'static,
+  S::Err: Send + 'static,
+  S::Item: Send + 'static,
 {
   type Unsub = SharedSubscription;
 
@@ -117,6 +117,7 @@ where
   {
     let stopped = Arc::new(Mutex::new(false));
     let stopped_c = Arc::clone(&stopped);
+    /*
     let subscriber = ObserverBlockAll {
       next,
       error,
@@ -125,7 +126,9 @@ where
       is_stopped: stopped,
       marker: TypeHint::new(),
     };
-    self.actual_subscribe(subscriber);
+
+     */
+    //self.actual_subscribe(subscriber);
     while !*stopped_c.lock().unwrap() {
       std::thread::sleep(Duration::from_millis(1))
     }

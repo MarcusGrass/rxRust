@@ -73,6 +73,7 @@ impl SubscriptionLike for SharedFuturePublisher {
 impl<F, S> PublisherFactory for FuturePublisherFactory<F, S>
 where
   F: Future,
+  <F as futures::Future>::Output: std::marker::Send + 'static,
 {
   type Item = F::Output;
   type Err = ();
@@ -81,16 +82,17 @@ where
 impl<F, SD> LocalPublisherFactory<'static> for FuturePublisherFactory<F, SD>
 where
   F: Future + 'static,
+  <F as futures::Future>::Output: std::marker::Send + 'static,
   SD: LocalScheduler,
 {
 
-  fn subscribe<S>(self, mut subscriber: S) where S: Subscriber<Item=Self::Item, Err=Self::Err> + 'static {
+  fn subscribe(self, mut channel: PublisherChannel<Self::Item, Self::Err>) {
     let f = self.future;
     let (future, handle) = futures::future::abortable(f);
     self.scheduler.spawn(future.map(move |v| {
       if let Ok(output) = v {
-        subscriber.next(output);
-        subscriber.complete();
+        channel.item_chn.next(output);
+        channel.item_chn.complete();
       }
     }));
     todo!()
@@ -100,6 +102,7 @@ where
 impl<F, SD> SharedPublisherFactory for FuturePublisherFactory<F, SD>
 where
     F: Future + Send + Sync + 'static,
+    <F as futures::Future>::Output: std::marker::Send + 'static,
     SD: SharedScheduler,
 {
 
@@ -146,12 +149,12 @@ pub struct FutureResultPublisherFactory<F, S, Item, Err> {
   marker: TypeHint<(Item, Err)>,
 }
 
-impl<F, S, Item, Err> PublisherFactory for FutureResultPublisherFactory<F, S, Item, Err> {
+impl<F, S, Item: Send + 'static, Err: Send + 'static> PublisherFactory for FutureResultPublisherFactory<F, S, Item, Err> {
   type Item = Item;
   type Err = Err;
 }
 
-impl<F, SD, Item, Error> LocalPublisherFactory<'static>
+impl<F, SD, Item: Send + 'static, Error: Send + 'static> LocalPublisherFactory<'static>
   for FutureResultPublisherFactory<F, SD, Item, Error>
 where
     F: Future + 'static,
@@ -159,14 +162,13 @@ where
     SD: LocalScheduler,
 {
 
-  fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'static {
+  fn subscribe(self, mut channel: PublisherChannel<Self::Item, Self::Err>) {
     let f = self.future.map(move |v| match v.into() {
       Ok(t) => {
-        subscriber.next(t);
-        subscriber.complete();
+        channel.item_chn.next(t);
+        channel.item_chn.complete();
       }
-      Err(e) => subscriber.error(e),
+      Err(e) => channel.item_chn.error(e),
     });
     let (future, handle) = futures::future::abortable(f);
     self.scheduler.spawn(future.map(|_| ()));
@@ -177,7 +179,7 @@ where
   }
 }
 
-impl<F, SD, Item, Error> SharedPublisherFactory
+impl<F, SD, Item: Send + 'static, Error: Send + 'static> SharedPublisherFactory
   for FutureResultPublisherFactory<F, SD, Item, Error>
 where
     SD: SharedScheduler,

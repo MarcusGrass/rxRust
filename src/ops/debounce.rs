@@ -16,16 +16,16 @@ pub struct DebounceOp<S, SD> {
 
 observable_proxy_impl!(DebounceOp, S, SD);
 
-impl<Item, Err, S, SD> LocalObservable<'static> for DebounceOp<S, SD>
+impl<Item: Send + 'static, Err: Send + 'static, S, SD> LocalObservable<'static> for DebounceOp<S, SD>
 where
   S: LocalObservable<'static, Item = Item, Err = Err>,
   Item: Clone + 'static,
   SD: LocalScheduler + 'static,
 {
 
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     let Self {
       source,
@@ -54,11 +54,9 @@ where
   S::Item: Clone + Send + 'static,
   SD: SharedScheduler + Send + 'static,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let Self {

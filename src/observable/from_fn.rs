@@ -18,19 +18,18 @@ where
 #[derive(Clone)]
 pub struct FnPublisherFactory<F, Item, Err>(F, TypeHint<(Item, Err)>);
 
-impl<F, Item, Err> PublisherFactory for FnPublisherFactory<F, Item, Err> {
+impl<F, Item: Send + 'static, Err: Send + 'static> PublisherFactory for FnPublisherFactory<F, Item, Err> {
   type Item = Item;
   type Err = Err;
 }
 
-impl<'a, F: 'a, Item: 'a, Err: 'a> LocalPublisherFactory<'a>
+impl<'a, F: 'a, Item: Send + 'static, Err: Send + 'static> LocalPublisherFactory<'a>
   for FnPublisherFactory<F, Item, Err>
 where
   F: FnOnce(Box<dyn Subscriber<Item = Item, Err = Err> + 'a>),
 {
 
-  fn subscribe<S>(self, subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + 'a {
+  fn subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -97,7 +96,7 @@ where
   }
 }
 
-impl<F: 'static, Item: 'static, Err: 'static> SharedPublisherFactory
+impl<F: 'static, Item: Send + 'static, Err: Send + 'static> SharedPublisherFactory
   for FnPublisherFactory<F, Item, Err>
 where
     F: FnOnce(Box<dyn Subscriber<Item = Item, Err = Err> + 'static>) + Send + Sync,

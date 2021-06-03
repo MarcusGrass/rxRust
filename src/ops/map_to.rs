@@ -11,7 +11,7 @@ pub struct MapToOp<S, B> {
 #[doc(hidden)]
 macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-    fn actual_subscribe<O > (
+    fn actual_subscribe(
       self,
       subscriber: O,
     )
@@ -32,7 +32,7 @@ macro_rules! observable_impl {
   }
 }
 
-impl<S, B> Observable for MapToOp<S, B>
+impl<S, B: Send + 'static> Observable for MapToOp<S, B>
 where
   S: Observable,
 {
@@ -40,13 +40,13 @@ where
   type Err = S::Err;
 }
 
-impl<'a, B, S> LocalObservable<'a> for MapToOp<S, B>
+impl<'a, B: Send + 'static, S> LocalObservable<'a> for MapToOp<S, B>
 where
   S: LocalObservable<'a>,
   B: Clone + 'a,
   S::Item: 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -57,9 +57,7 @@ where
   B: Clone + Send + Sync + 'static,
   S::Item: 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -71,7 +69,7 @@ pub struct MapToObserver<O, B, Item> {
   marker: TypeHint<*const Item>,
 }
 
-impl<Item, Err, O, B> Observer for MapToObserver<O, B, Item>
+impl<Item: Send + 'static, Err: Send + 'static, O, B> Observer for MapToObserver<O, B, Item>
 where
   O: Observer<Item = B, Err = Err>,
   B: Clone,

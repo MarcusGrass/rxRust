@@ -16,11 +16,9 @@ where
   S: SharedObservable + Send + 'static,
   SD: SharedScheduler + Send + 'static,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let source = self.source;
@@ -82,9 +80,9 @@ where
   S: LocalObservable<'static> + 'static,
   SD: LocalScheduler,
 {
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
-    self,
-    subscriber: O,
+  fn actual_subscribe(
+      self,
+      channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let source = self.source;

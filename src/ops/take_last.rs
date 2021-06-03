@@ -12,7 +12,7 @@ pub struct TakeLastOp<S> {
 #[doc(hidden)]
 macro_rules! observable_impl {
   ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -39,7 +39,7 @@ impl<'a, S> LocalObservable<'a> for TakeLastOp<S>
 where
   S: LocalObservable<'a> + 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -49,9 +49,7 @@ where
   S: SharedObservable,
   S::Item: Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -62,7 +60,7 @@ pub struct TakeLastObserver<O, Item> {
   queue: VecDeque<Item>, // TODO: replace VecDeque with RingBuf
 }
 
-impl<Item, Err, O> Observer for TakeLastObserver<O, Item>
+impl<Item: Send + 'static, Err: Send + 'static, O> Observer for TakeLastObserver<O, Item>
 where
   O: Observer<Item = Item, Err = Err>,
 {

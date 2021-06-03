@@ -40,7 +40,7 @@ macro_rules! impl_observer {
   };
 }
 
-impl<Item, Err, U, O> Observer for Subject<Arc<Mutex<Vec<O>>>, U>
+impl<Item: Send + 'static, Err: Send + 'static, U, O> Observer for Subject<Arc<Mutex<Vec<O>>>, U>
 where
   O: Observer<Item = Item, Err = Err> + SubscriptionLike,
   Item: Clone,
@@ -52,7 +52,7 @@ where
   impl_observer!();
 }
 
-impl<Item, Err, U, O> Observer for Subject<Rc<RefCell<Vec<O>>>, U>
+impl<Item: Send + 'static, Err: Send + 'static, U, O> Observer for Subject<Rc<RefCell<Vec<O>>>, U>
 where
   O: Observer<Item = Item, Err = Err> + SubscriptionLike,
   Item: Clone,
@@ -64,7 +64,7 @@ where
   impl_observer!();
 }
 
-impl<Item, Err, U, O> Observer for Subject<Box<Vec<O>>, U>
+impl<Item: Send + 'static, Err: Send + 'static, U, O> Observer for Subject<Box<Vec<O>>, U>
 where
   O: Observer<Item = Item, Err = Err> + SubscriptionLike,
   Item: Clone,
@@ -81,7 +81,7 @@ pub(crate) struct SubjectObserver<V> {
   is_stopped: bool,
 }
 
-impl<Item, Err, O> Observer for SubjectObserver<Arc<Mutex<Vec<O>>>>
+impl<Item: Send + 'static, Err: Send + 'static, O> Observer for SubjectObserver<Arc<Mutex<Vec<O>>>>
 where
   O: Publisher<Item = Item, Err = Err>,
   Item: Clone,
@@ -125,7 +125,7 @@ where
   }
 }
 
-impl<Item, Err, O> Observer for SubjectObserver<Rc<RefCell<Vec<O>>>>
+impl<Item: Send + 'static, Err: Send + 'static, O> Observer for SubjectObserver<Rc<RefCell<Vec<O>>>>
 where
   O: Publisher<Item = Item, Err = Err>,
   Item: Clone,
@@ -169,7 +169,7 @@ where
   }
 }
 
-impl<Item, Err, O> Observer for SubjectObserver<Box<Vec<O>>>
+impl<Item: Send + 'static, Err: Send + 'static, O> Observer for SubjectObserver<Box<Vec<O>>>
 where
   O: Publisher<Item = Item, Err = Err>,
   Item: Clone,

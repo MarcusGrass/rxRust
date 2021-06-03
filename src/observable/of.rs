@@ -2,6 +2,7 @@ use crate::prelude::*;
 use crate::subscriber::Subscriber;
 use std::sync::Arc;
 use std::rc::Rc;
+use futures::channel::mpsc::Sender;
 
 /// Creates an observable producing a multiple values.
 ///
@@ -55,38 +56,31 @@ macro_rules! of_sequence {
 /// observable::of(123)
 ///   .subscribe(|v| {println!("{},", v)});
 /// ```
-pub fn of<Item>(v: Item) -> ObservableBase<OfPublisherFactory<Item>> {
+pub fn of<Item: Send + 'static>(v: Item) -> ObservableBase<OfPublisherFactory<Item>> {
   ObservableBase::new(OfPublisherFactory(v))
 }
 
 #[derive(Clone)]
-pub struct OfPublisherFactory<Item>(Item);
+pub struct OfPublisherFactory<Item: Send + 'static>(Item);
 
-impl<Item> PublisherFactory for OfPublisherFactory<Item> {
+impl<Item: Send + 'static> PublisherFactory for OfPublisherFactory<Item> {
   type Item = Item;
   type Err = ();
 }
 
 impl<'a, Item: 'static + Clone + Send + Sync> LocalPublisherFactory<'a> for OfPublisherFactory<Item> {
-  fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
-    let (p, s) = pub_sub_channels();
-    let mut publisher = OfPublisher(self.0, p);
-    subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+  fn subscribe(self, mut channel: PublisherChannel<Self::Item, Self::Err>) {
+    let mut publisher = OfPublisher(self.0, channel.item_chn);
+    publish(publisher, channel.request_chn)
   }
 }
 
-struct OfPublisher<Item: Clone>(Item, PublisherChannel<Item, ()>);
+struct OfPublisher<Item: Clone + Send + 'static>(Item, Sender<SubscriberChannelItem<Item, ()>>);
 
 impl<Item: Clone + Send + Sync + 'static> Source for OfPublisher<Item>
 {
   type Item = Item;
   type Err = ();
-
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
-    &self.1
-  }
 }
 
 impl<Item: Clone + Send + Sync + 'static> SubscriptionLike for OfPublisher<Item>
@@ -123,10 +117,13 @@ impl<Item: Clone + Sync + Send + 'static> SharedPublisherFactory
 {
   fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let (p, s) = pub_sub_channels();
     let mut publisher = OfPublisher(self.0, p);
     subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+    publish(publisher, subscriber)
+
+     */
   }
 }
 
@@ -153,16 +150,16 @@ impl<Item: Clone + Sync + Send + 'static> SharedPublisherFactory
 /// observable::of_result(Err("An error"))
 ///   .subscribe_err(|v: &i32| {}, |e| {println!("Error:  {},", e)});
 /// ```
-pub fn of_result<Item, Err>(
+pub fn of_result<Item: Send + 'static, Err: Send + 'static>(
   r: Result<Item, Err>,
 ) -> ObservableBase<OfResultPublisherFactory<Item, Err>> {
   ObservableBase::new(OfResultPublisherFactory(r))
 }
 
 #[derive(Clone)]
-pub struct OfResultPublisherFactory<Item, Err>(Result<Item, Err>);
+pub struct OfResultPublisherFactory<Item: Send + 'static, Err: Send + 'static>(Result<Item, Err>);
 
-impl<Item, Err> PublisherFactory for OfResultPublisherFactory<Item, Err> {
+impl<Item: Send + 'static, Err: Send + 'static> PublisherFactory for OfResultPublisherFactory<Item, Err> {
   type Item = Item;
   type Err = Err;
 }
@@ -170,30 +167,23 @@ impl<Item, Err> PublisherFactory for OfResultPublisherFactory<Item, Err> {
 impl<'a, Item: Clone + Send + 'static, Err: Clone + Send + Sync + 'static> LocalPublisherFactory<'a>
   for OfResultPublisherFactory<Item, Err>
 {
-  fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
-    let (p, s) = pub_sub_channels();
-    let mut publisher = OfResultPublisher(self.0, p);
-    subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+  fn subscribe(self, mut channel: PublisherChannel<Self::Item, Self::Err>){
+    let mut publisher = OfResultPublisher(self.0, channel.item_chn);
+    publish(publisher, channel.request_chn)
   }
 }
 
-struct OfResultPublisher<Item: Clone, Err: Clone>(
+struct OfResultPublisher<Item: Clone + Send + 'static, Err: Clone + Send + 'static>(
   Result<Item, Err>,
-  PublisherChannel<Item, Err>,
+  Sender<SubscriberChannelItem<Item, Err>>,
 );
 impl<Item: Clone + Send + 'static, Err: Clone + Send + Sync + 'static> Source
 for OfResultPublisher<Item, Err>
 {
   type Item = Item;
   type Err = Err;
-
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
-    &self.1
-  }
 }
-impl<Item: Clone, Err: Clone> SubscriptionLike
+impl<Item: Clone + Send + 'static, Err: Clone + Send + 'static> SubscriptionLike
   for OfResultPublisher<Item, Err>
 {
   fn request(&mut self, _: usize) {
@@ -243,10 +233,12 @@ impl<Item: Clone + Send + Sync + 'static, Err: Clone + Send + Sync + 'static>
 
   fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let (p, s) = pub_sub_channels();
     let mut publisher = OfResultPublisher(self.0, p);
-    subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+    publish(publisher, subscriber)
+
+     */
   }
 }
 
@@ -275,36 +267,29 @@ pub fn of_option<Item>(
 #[derive(Clone)]
 pub struct OfOptionPublisherFactory<Item>(Option<Item>);
 
-impl<Item> PublisherFactory for OfOptionPublisherFactory<Item> {
+impl<Item: Send + 'static> PublisherFactory for OfOptionPublisherFactory<Item> {
   type Item = Item;
   type Err = ();
 }
 
 impl<'a, Item: Clone + Send + Sync + 'static> LocalPublisherFactory<'a> for OfOptionPublisherFactory<Item> {
 
-  fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
-    let (p, s) = pub_sub_channels();
-    let mut publisher = OfOptionPublisher(self.0, p);
-    subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+  fn subscribe(self, mut channel: PublisherChannel<Self::Item, Self::Err>){
+    let mut publisher = OfOptionPublisher(self.0, channel.item_chn);
+    publish(publisher, channel.request_chn)
   }
 }
 
-struct OfOptionPublisher<Item>(
+struct OfOptionPublisher<Item: Send + 'static>(
   Option<Item>,
-  PublisherChannel<Item, ()>,
+  Sender<SubscriberChannelItem<Item, ()>>,
 );
 impl<Item: Clone + Send + 'static> Source for OfOptionPublisher<Item>
 {
   type Item = Item;
   type Err = ();
-
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
-    &self.1
-  }
 }
-impl<Item: Clone> SubscriptionLike for OfOptionPublisher<Item>
+impl<Item: Clone + Send + 'static> SubscriptionLike for OfOptionPublisher<Item>
 {
   fn request(&mut self, _: usize) {
     match self.0.clone() {
@@ -346,10 +331,13 @@ impl<Item: Clone + Send + Sync + 'static> SharedPublisherFactory
 
   fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let (p, s) = pub_sub_channels();
     let mut publisher = OfOptionPublisher(self.0, p);
     subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+    publish(publisher, subscriber)
+
+     */
   }
 }
 
@@ -376,7 +364,7 @@ pub fn of_fn<F, Item>(f: F) -> ObservableBase<OfFnPublisherFactory<F, Item>> {
 #[derive(Clone)]
 pub struct OfFnPublisherFactory<F, Item>(F, TypeHint<Item>);
 
-impl<F, Item> PublisherFactory for OfFnPublisherFactory<F, Item> {
+impl<F, Item: Send + 'static> PublisherFactory for OfFnPublisherFactory<F, Item> {
   type Item = Item;
   type Err = ();
 }
@@ -386,18 +374,15 @@ where
   F: Fn() -> Item + Send + 'static,
 {
 
-  fn subscribe<S>(self, mut subscriber: S) where
-      S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static {
-    let (p, s) = pub_sub_channels();
-    let mut publisher = OfFnPublisher(self.0, p, TypeHint::new());
-    subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+  fn subscribe(self, mut channel: PublisherChannel<Self::Item, Self::Err>) {
+    let mut publisher = OfFnPublisher(self.0, channel.item_chn, TypeHint::new());
+    publish(publisher, channel.request_chn)
   }
 }
 
-struct OfFnPublisher<F, Item>(
+struct OfFnPublisher<F, Item: Send + 'static>(
   F,
-  PublisherChannel<Item, ()>,
+  Sender<SubscriberChannelItem<Item, ()>>,
   TypeHint<Item>,
 );
 
@@ -407,13 +392,9 @@ impl<F, Item: Send + 'static> Source for OfFnPublisher<F, Item>
 {
   type Item = Item;
   type Err = ();
-
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err> {
-    &self.1
-  }
 }
 
-impl<F, Item> SubscriptionLike for OfFnPublisher<F, Item>
+impl<F, Item: Send + 'static> SubscriptionLike for OfFnPublisher<F, Item>
 where
   F: Fn() -> Item,
 {
@@ -456,10 +437,12 @@ where
 
   fn subscribe<S>(self, mut subscriber: S) where
       S: Subscriber<Item=Self::Item, Err=Self::Err> + Send + Sync + 'static {
+    /*
     let (p, s) = pub_sub_channels();
     let mut publisher = OfFnPublisher(self.0, p, TypeHint::new());
-    subscriber.connect(s);
-    start_publish_loop(publisher, subscriber)
+    publish(publisher, subscriber)
+
+     */
   }
 }
 

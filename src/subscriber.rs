@@ -15,76 +15,52 @@ pub trait Subscriber: Observer + SubscriptionLike {
   fn connect(&mut self, chn: SubscriptionChannel<Self::Item, Self::Err>);
 }
 
-pub fn pub_sub_channels<Item, Err>() -> (PublisherChannel<Item, Err>, SubscriptionChannel<Item, Err>){
-  let item_channel = channel(usize::MAX);
-  let err_channel = channel(1);
-  let complete_channel = channel(1);
-  let request_channel = channel(usize::MAX);
-  let unsub_channel = channel(1);
+pub fn pub_sub_channels<Item: Send + 'static, Err: Send + 'static>() -> (PublisherChannel<Item, Err>, SubscriptionChannel<Item, Err>){
+  let item_channel = channel(1000);
+  let request_channel = channel(1000);
   (PublisherChannel {
     item_chn: item_channel.0,
-    err_chn: err_channel.0,
-    complete_chn: complete_channel.0,
     request_chn: request_channel.1,
-    unsub_chn: unsub_channel.1,
   }, SubscriptionChannel {
     item_chn: item_channel.1,
-    err_chn: err_channel.1,
-    complete_chn: complete_channel.1,
     request_chn: request_channel.0,
-    unsub_chn: unsub_channel.0
   })
 }
 
-pub enum Upstream<Item, Err> {
+pub enum Upstream<Item: Send + 'static, Err: Send + 'static> {
   UNINIT,
   INIT(SubscriptionChannel<Item, Err>)
 }
 
-impl<Item, Err> SubscriptionLike for Upstream<Item, Err> {
-  fn request(&mut self, requested: usize) {
-    match self {
-      Upstream::UNINIT => panic!("Request on uninitialized upstream"),
-      Upstream::INIT(chn) => chn.request(requested)
-    }
-  }
+pub enum SubscriberChannelItem<Item: Send + 'static, Err: Send + 'static> {
+  Item(Item),
+  Err(Err),
+  Complete,
+}
 
-  fn unsubscribe(&mut self) {
-    match self {
-      Upstream::UNINIT => panic!("Request on uninitialized upstream"),
-      Upstream::INIT(chn) => chn.unsubscribe()
-    }
-  }
-
-  fn is_closed(&self) -> bool {
-    todo!()
-  }
+pub enum PublisherChannelItem {
+  Request(usize),
+  Cancel,
 }
 
 
 
-pub struct SubscriptionChannel<Item, Err> {
-  pub(crate) item_chn: Receiver<Item>,
-  pub(crate) err_chn: Receiver<Err>,
-  pub(crate) complete_chn: Receiver<()>,
-  pub(crate) request_chn: Sender<usize>,
-  pub(crate) unsub_chn: Sender<()>,
+pub struct SubscriptionChannel<Item: Send + 'static, Err: Send + 'static> {
+  pub(crate) item_chn: Receiver<SubscriberChannelItem<Item, Err>>,
+  pub(crate) request_chn: Sender<PublisherChannelItem>,
 }
 
-pub struct PublisherChannel<Item, Err> {
-  pub(crate) item_chn: Sender<Item>,
-  pub(crate) err_chn: Sender<Err>,
-  pub(crate) complete_chn: Sender<()>,
-  pub(crate) request_chn: Receiver<usize>,
-  pub(crate) unsub_chn: Receiver<()>,
+pub struct PublisherChannel<Item: Send + 'static, Err: Send + 'static> {
+  pub(crate) item_chn: Sender<SubscriberChannelItem<Item, Err>>,
+  pub(crate) request_chn: Receiver<PublisherChannelItem>,
 }
 
-impl<Item, Err> Observer for PublisherChannel<Item, Err> {
+impl<Item: Send + 'static, Err: Send + 'static> Observer for Sender<SubscriberChannelItem<Item, Err>> {
   type Item = Item;
   type Err = Err;
 
   fn next(&mut self, value: Self::Item) {
-    let result = self.item_chn.try_send(value);
+    let result = self.try_send(SubscriberChannelItem::Item(value));
     if result.is_err() {
       println!("{:?}" ,result.err().unwrap());
       panic!()
@@ -93,21 +69,21 @@ impl<Item, Err> Observer for PublisherChannel<Item, Err> {
   }
 
   fn error(&mut self, err: Self::Err) {
-    self.err_chn.try_send(err).unwrap();
+    self.try_send(SubscriberChannelItem::Err(err)).unwrap();
   }
 
   fn complete(&mut self) {
-    self.complete_chn.try_send(());
+    self.try_send(SubscriberChannelItem::Complete);
   }
 }
 
-impl<Item, Err> SubscriptionLike for SubscriptionChannel<Item, Err> {
+impl SubscriptionLike for Sender<PublisherChannelItem> {
   fn request(&mut self, requested: usize) {
-    self.request_chn.try_send(requested).unwrap();
+    self.try_send(PublisherChannelItem::Request(requested)).unwrap();
   }
 
   fn unsubscribe(&mut self) {
-    self.unsub_chn.try_send(()).unwrap();
+    self.try_send(PublisherChannelItem::Cancel).unwrap();
   }
 
   fn is_closed(&self) -> bool {

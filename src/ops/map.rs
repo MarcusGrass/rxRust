@@ -11,7 +11,7 @@ pub struct MapOp<S, M> {
 #[doc(hidden)]
 macro_rules! observable_impl {
  ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -32,7 +32,7 @@ macro_rules! observable_impl {
 }
 }
 
-impl<Item, S, M> Observable for MapOp<S, M>
+impl<Item: Send + 'static, S, M> Observable for MapOp<S, M>
 where
   S: Observable,
   M: FnMut(S::Item) -> Item,
@@ -41,26 +41,24 @@ where
   type Err = S::Err;
 }
 
-impl<'a, Item, S, M> LocalObservable<'a> for MapOp<S, M>
+impl<'a, Item: Send + 'static, S, M> LocalObservable<'a> for MapOp<S, M>
 where
   S: LocalObservable<'a>,
   M: FnMut(S::Item) -> Item + 'a,
   S::Item: 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
 
-impl<Item, S, M> SharedObservable for MapOp<S, M>
+impl<Item: Send + 'static, S, M> SharedObservable for MapOp<S, M>
 where
   S: SharedObservable,
   M: FnMut(S::Item) -> Item + Send + Sync + 'static,
   S::Item: 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -72,7 +70,7 @@ pub struct MapObserver<O, M, Item> {
   marker: TypeHint<*const Item>,
 }
 
-impl<Item, Err, O, M, B> Observer for MapObserver<O, M, Item>
+impl<Item: Send + 'static, Err: Send + 'static, O, M, B> Observer for MapObserver<O, M, Item>
 where
   O: Observer<Item = B, Err = Err>,
   M: FnMut(Item) -> B,

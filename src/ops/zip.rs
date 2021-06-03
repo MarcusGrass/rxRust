@@ -32,9 +32,9 @@ where
   A::Item: 'a,
   B::Item: 'a,
 {
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*let sub = subscriber.subscription;
     let o_zip = ZipObserver::new(subscriber.observer, sub.clone());
@@ -59,11 +59,9 @@ where
   A::Item: Send + Sync + 'static,
   B::Item: Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*let sub = subscriber.subscription;
     let o_zip = ZipObserver::new(subscriber.observer, sub.clone());
@@ -105,7 +103,7 @@ impl<O, U, A, B> ZipObserver<O, U, A, B> {
   }
 }
 
-impl<O, U, A, B, Err> Observer for ZipObserver<O, U, A, B>
+impl<O, U, A: Send + 'static, B: Send + 'static, Err: Send + 'static> Observer for ZipObserver<O, U, A, B>
 where
   O: Observer<Item = (A, B), Err = Err>,
   U: SubscriptionLike,
@@ -149,7 +147,7 @@ where
 
 struct AObserver<O, B>(O, TypeHint<B>);
 
-impl<O, A, B, Err> Observer for AObserver<O, B>
+impl<O, A: Send + 'static, B: Send + 'static, Err: Send + 'static> Observer for AObserver<O, B>
 where
   O: Observer<Item = ZipItem<A, B>, Err = Err>,
 {
@@ -163,7 +161,7 @@ where
 
 struct BObserver<O, A>(O, TypeHint<A>);
 
-impl<O, A, B, Err> Observer for BObserver<O, A>
+impl<O, A: Send + 'static, B: Send + 'static, Err: Send + 'static> Observer for BObserver<O, A>
 where
   O: Observer<Item = ZipItem<A, B>, Err = Err>,
 {

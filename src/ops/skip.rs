@@ -11,7 +11,7 @@ pub struct SkipOp<S> {
 #[doc(hidden)]
 macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -39,7 +39,7 @@ impl<'a, S> LocalObservable<'a> for SkipOp<S>
 where
   S: LocalObservable<'a>,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -48,9 +48,7 @@ impl<S> SharedObservable for SkipOp<S>
 where
   S: SharedObservable,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -62,7 +60,7 @@ pub struct SkipObserver<O, S> {
   hits: u32,
 }
 
-impl<Item, Err, O, U> Observer for SkipObserver<O, U>
+impl<Item: Send + 'static, Err: Send + 'static, O, U> Observer for SkipObserver<O, U>
 where
   O: Observer<Item = Item, Err = Err>,
   U: SubscriptionLike,

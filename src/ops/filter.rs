@@ -11,7 +11,7 @@ pub struct FilterOp<S, F> {
 #[doc(hidden)]
 macro_rules! observable_impl {
     ($subscription:ty, $source:ident, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -45,7 +45,7 @@ where
   S: LocalObservable<'a>,
   F: FnMut(&S::Item) -> bool + 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -55,9 +55,7 @@ where
   S: SharedObservable,
   F: FnMut(&S::Item) -> bool + Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -67,7 +65,7 @@ pub struct FilterObserver<S, F> {
   filter: F,
 }
 
-impl<Item, Err, O, F> Observer for FilterObserver<O, F>
+impl<Item: Send + 'static, Err: Send + 'static, O, F> Observer for FilterObserver<O, F>
 where
   O: Observer<Item = Item, Err = Err>,
   F: FnMut(&Item) -> bool,

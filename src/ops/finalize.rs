@@ -27,9 +27,9 @@ where
   F: FnMut() + 'static,
 {
 
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'a>(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   )  {
     /*
     let subscription = subscriber.subscription.clone();
@@ -57,11 +57,9 @@ where
   F: FnMut() + Send + Sync + 'static,
 {
 
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let subscription = subscriber.subscription.clone();
@@ -148,7 +146,7 @@ where
   fn is_closed(&self) -> bool { self.is_closed }
 }
 
-impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Arc<Mutex<Option<Target>>>>
+impl<Item: Send + 'static, Err: Send + 'static, O, Target> Observer for FinalizerObserver<O, Arc<Mutex<Option<Target>>>>
 where
   O: Observer<Item = Item, Err = Err>,
   Target: FnMut(),
@@ -174,7 +172,7 @@ where
 
 }
 
-impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Rc<RefCell<Option<Target>>>>
+impl<Item: Send + 'static, Err: Send + 'static, O, Target> Observer for FinalizerObserver<O, Rc<RefCell<Option<Target>>>>
 where
   O: Observer<Item = Item, Err = Err>,
   Target: FnMut(),
@@ -200,7 +198,7 @@ where
 
 }
 
-impl<Item, Err, O, Target> Observer for FinalizerObserver<O, Box<Option<Target>>>
+impl<Item: Send + 'static, Err: Send + 'static, O, Target> Observer for FinalizerObserver<O, Box<Option<Target>>>
 where
   O: Observer<Item = Item, Err = Err>,
   Target: FnMut(),

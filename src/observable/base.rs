@@ -2,25 +2,17 @@ use crate::prelude::*;
 use crate::subscriber::Subscriber;
 
 pub trait PublisherFactory {
-  type Item;
-  type Err;
+  type Item: Send + 'static;
+  type Err: Send + 'static;
 }
 
 pub trait LocalPublisherFactory<'a>: PublisherFactory {
-  fn subscribe<S>(
-    self,
-    subscriber: S,
-  )
-  where
-    S: Subscriber<Item = Self::Item, Err = Self::Err> + Send + 'static;
+  fn subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>);
 }
 
 pub trait Source: SubscriptionLike {
   type Item: Send + 'static;
   type Err: Send + 'static;
-
-  fn get_channel(&self) -> &PublisherChannel<Self::Item, Self::Err>;
-
 }
 
 pub trait SharedPublisherFactory: PublisherFactory {
@@ -51,9 +43,9 @@ impl<'a, Emit> LocalObservable<'a> for ObservableBase<Emit>
 where
   Emit: LocalPublisherFactory<'a>,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     println!("{:?}", "sub");
-    self.0.subscribe(subscriber)
+    self.0.subscribe(channel)
   }
 }
 
@@ -62,9 +54,7 @@ where
   Emit: SharedPublisherFactory,
 {
 
-  fn actual_subscribe<
-    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static,
-  >(self, subscriber: S) {
-    self.0.subscribe(subscriber)
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
+    //self.0.subscribe(channel)
   }
 }

@@ -7,11 +7,9 @@ use crate::subscriber::Subscriber;
 pub struct Shared<R>(pub(crate) R);
 
 pub trait SharedObservable: Observable {
-  fn actual_subscribe<
-    S: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: S,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   );
 
   /// Convert to a thread-safe mode.
@@ -31,9 +29,7 @@ where
     SO: SharedObservable,
 {
 
-  fn actual_subscribe<
-    S: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: S) {
-    self.0.actual_subscribe(subscriber)
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
+    self.0.actual_subscribe(channel)
   }
 }

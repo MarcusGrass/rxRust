@@ -24,16 +24,16 @@ pub struct ThrottleTimeOp<S, SD> {
 
 observable_proxy_impl!(ThrottleTimeOp, S, SD);
 
-impl<Item, Err, S, SD> LocalObservable<'static> for ThrottleTimeOp<S, SD>
+impl<Item: Send + 'static, Err: Send + 'static, S, SD> LocalObservable<'static> for ThrottleTimeOp<S, SD>
 where
   S: LocalObservable<'static, Item = Item, Err = Err>,
-  Item: Clone + 'static,
+  Item: Clone + Send + 'static,
   SD: LocalScheduler + 'static,
 {
 
-  fn actual_subscribe<O: Subscriber<Item = Self::Item, Err = Self::Err> + 'static>(
-    self,
-    subscriber: O,
+  fn actual_subscribe(
+      self,
+      channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*
     let Self {
@@ -66,11 +66,9 @@ where
   S::Item: Clone + Send + 'static,
   SD: SharedScheduler + Send + 'static,
 {
-  fn actual_subscribe<
-    O: Subscriber<Item = Self::Item, Err = Self::Err> + Sync + Send + 'static,
-  >(
+  fn actual_subscribe(
     self,
-    subscriber: O,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   ) {
     /*let Self {
       source,

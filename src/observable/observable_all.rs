@@ -22,7 +22,7 @@ impl<Item, Err, N, E, C> ObserverAll<N, E, C, Item, Err> {
   }
 }
 
-impl<Item, Err, N, E, C> Observer for ObserverAll<N, E, C, Item, Err>
+impl<Item: Send + 'static, Err: Send + 'static, N, E, C> Observer for ObserverAll<N, E, C, Item, Err>
 where
   C: FnMut(),
   N: FnMut(Item),

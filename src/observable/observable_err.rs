@@ -8,7 +8,7 @@ pub struct ObserverErr<N, E, Item, Err> {
   marker: TypeHint<fn() -> (Item, Err)>,
 }
 
-impl<Item, Err, N, E> Observer for ObserverErr<N, E, Item, Err>
+impl<Item: Send + 'static, Err: Send + 'static, N, E> Observer for ObserverErr<N, E, Item, Err>
 where
   N: FnMut(Item),
   E: FnMut(Err),

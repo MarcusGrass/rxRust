@@ -11,7 +11,7 @@ pub struct FilterMapOp<S, F> {
 #[doc(hidden)]
 macro_rules! observable_impl {
     ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -31,7 +31,7 @@ macro_rules! observable_impl {
 }
 }
 
-impl<'a, Item, S, F> Observable for FilterMapOp<S, F>
+impl<'a, Item: Send + 'static, S, F> Observable for FilterMapOp<S, F>
 where
   S: Observable,
   F: FnMut(S::Item) -> Option<Item>,
@@ -40,26 +40,24 @@ where
   type Err = S::Err;
 }
 
-impl<'a, Item, S, F> LocalObservable<'a> for FilterMapOp<S, F>
+impl<'a, Item: Send + 'static, S, F> LocalObservable<'a> for FilterMapOp<S, F>
 where
   S: LocalObservable<'a>,
   F: FnMut(S::Item) -> Option<Item> + 'a,
   S::Item: 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
 
-impl<Item, S, F> SharedObservable for FilterMapOp<S, F>
+impl<Item: Send + 'static, S, F> SharedObservable for FilterMapOp<S, F>
 where
   S: SharedObservable,
   F: FnMut(S::Item) -> Option<Item> + Send + Sync + 'static,
   S::Item: 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -70,7 +68,7 @@ pub struct FilterMapObserver<O, F, Item> {
   _marker: TypeHint<*const Item>,
 }
 
-impl<O, F, Item, Err, OutputItem> Observer for FilterMapObserver<O, F, Item>
+impl<O, F, Item: Send + 'static, Err: Send + 'static, OutputItem> Observer for FilterMapObserver<O, F, Item>
 where
   O: Observer<Item = OutputItem, Err = Err>,
   F: FnMut(Item) -> Option<OutputItem>,

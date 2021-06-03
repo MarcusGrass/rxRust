@@ -16,7 +16,7 @@ macro_rules! observable_impl {
     ($subscription:ty, $sub_creator:path,
     $sharer:path, $mutability_enabler:path,
     $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -84,7 +84,7 @@ where
   S: LocalObservable<'a> + 'a,
   N: LocalObservable<'a, Err = S::Err> + 'a,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -96,9 +96,7 @@ where
   S::Item: Send + Sync + 'static,
   N::Item: Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -113,7 +111,7 @@ pub struct TakeUntilNotifierObserver<O, U, Item> {
   _p: TypeHint<Item>,
 }
 
-impl<O, U, NotifierItem, Err> Observer for TakeUntilNotifierObserver<O, U, NotifierItem>
+impl<O, U, NotifierItem: Send + 'static, Err: Send + 'static> Observer for TakeUntilNotifierObserver<O, U, NotifierItem>
 where
   O: Observer<Err = Err>,
   U: SubscriptionLike,

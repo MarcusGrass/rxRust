@@ -21,7 +21,7 @@ where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Clone + Eq,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -31,9 +31,7 @@ where
   S: SharedObservable<Item = Item>,
   Item: Send + Sync + 'static + Clone + Eq,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -44,7 +42,7 @@ pub struct ContainsObserver<S, T> {
   done: bool,
 }
 
-impl<O, Item, Err> Observer for ContainsObserver<O, Item>
+impl<O, Item: Send + 'static, Err: Send + 'static> Observer for ContainsObserver<O, Item>
 where
   O: Observer<Item = bool, Err = Err>,
   Item: Clone + Eq,

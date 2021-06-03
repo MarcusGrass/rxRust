@@ -2,13 +2,16 @@ use async_std::prelude::FutureExt as AsyncFutureExt;
 use futures::future::{lazy, AbortHandle, FutureExt};
 use std::future::Future;
 
-use crate::prelude::{SubscriptionLike, PublisherChannel, Publisher, Source, Subscriber, SubscriptionChannel};
-use futures::{StreamExt, TryStreamExt, TryFutureExt};
+use crate::prelude::{SubscriptionLike, PublisherChannel, Publisher, Source, Subscriber, SubscriptionChannel, SubscriberChannelItem, PublisherChannelItem};
+use futures::{StreamExt, TryStreamExt, TryFutureExt, Stream};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
-use futures::channel::mpsc::Receiver;
+use futures::channel::mpsc::{Sender, Receiver};
 use async_std::future::IntoFuture;
 use futures::stream::Next;
+use std::task::{Context, Poll};
+use std::pin::Pin;
+use crate::observer::Observer;
 
 pub fn task_future<T>(
   task: impl FnOnce(T) + 'static,
@@ -184,39 +187,103 @@ fn to_interval(
     .delay(delay)
 }
 
-pub fn start_publish_loop<P: Source + Send + 'static, S: Subscriber + Send + 'static>(mut publisher: P, sub: S) {
-  tokio::spawn(futures::future::lazy(move |_| {
-    while !publisher.get_channel().unsub_chn.try_recv().is_ok() {
-      if let Ok(requested) = publisher.get_channel().request_chn.try_recv() {
-        publisher.request(requested);
+pub fn observe_op<S: Subscriber + Send + 'static>(subscriber: S, inc: Receiver<SubscriberChannelItem<S::Item, S::Err>>, req: Receiver<PublisherChannelItem>) {
+  tokio::spawn(do_observe_op(subscriber, inc, req));
+}
+
+async fn do_observe_op<S: Subscriber + Send + 'static>(mut subscriber: S, mut inc: Receiver<SubscriberChannelItem<S::Item, S::Err>>, mut req: Receiver<PublisherChannelItem>) {
+  loop {
+    let option = req.next().await;
+    if let Some(requested) = option {
+      match requested {
+        PublisherChannelItem::Request(r) => {
+          subscriber.request(r);
+          let mut countdown = r;
+          while countdown > 0 {
+            println!("{:?}", "do op");
+            let incoming_item = inc.next().await;
+            println!("{:?}", "inc next");
+            if let Some(item) = incoming_item {
+              match item {
+                SubscriberChannelItem::Item(i) => {
+                  subscriber.next(i);
+                  countdown -= 1;
+                }
+                SubscriberChannelItem::Err(e) => {
+                  subscriber.error(e);
+                  break;
+                }
+                SubscriberChannelItem::Complete => {
+                  subscriber.complete();
+                  break;
+                }
+              }
+            } else {
+              break;
+            }
+          }
+          break;
+        }
+        PublisherChannelItem::Cancel => {
+          subscriber.unsubscribe();
+          break;
+        }
       }
+    } else {
+      break;
     }
-    println!("{:?}", sub.is_closed());
-  }));
+  }
 }
-pub fn start_publish_loop2<P: Source + Send + 'static>(mut publisher: P) {
-  tokio::spawn(futures::future::lazy(move |_| {
-    while !publisher.get_channel().unsub_chn.try_next().is_ok() {
-      if let Ok(requested) = publisher.get_channel().request_chn.try_recv() {
-        publisher.request(requested);
+
+pub fn observe<S: Subscriber + Send + 'static>(mut subscriber: S, mut rec: Receiver<SubscriberChannelItem<S::Item, S::Err>>) {
+    println!("{:?}", "do observe");
+  tokio::spawn(do_observe(subscriber, rec));
+}
+async fn do_observe<S: Subscriber + Send + 'static>(mut subscriber: S, mut rec: Receiver<SubscriberChannelItem<S::Item, S::Err>>) {
+  loop {
+    let option = rec.next().await;
+    if let Some(item) = option {
+      match item {
+        SubscriberChannelItem::Item(v) => subscriber.next(v),
+        SubscriberChannelItem::Err(e) => {
+          subscriber.error(e);
+          break;
+        }
+        SubscriberChannelItem::Complete => {
+          subscriber.complete();
+          break;
+        }
       }
+    } else {
+      break;
     }
-  }));
+  }
+
 }
 
-pub fn observe<S: Subscriber + Send + 'static>
-
-pub fn publish<P: Source + Send + 'static>(publisher: P, unsub: Receiver<()>, request: Receiver<usize>) {
-  tokio::spawn(do_loop(publisher, unsub, request));
+pub fn publish<P: Source + Send + 'static>(mut publisher: P, rec: Receiver<PublisherChannelItem>) {
+  tokio::spawn(do_publish(publisher, rec));
 }
 
 
-async fn do_loop<P: Source + Send + 'static>(publisher: P, unsub: Receiver<()>, request: Receiver<usize>) {
-  let h = tokio::spawn(await_cancel(unsub));
-  let (f, abort) = futures::future::abortable(publish_on_next(request, publisher));
-  tokio::spawn(f);
-  h.await;
-  abort.abort();
+async fn do_publish<P: Source + Send + 'static>(mut publisher: P, mut rec: Receiver<PublisherChannelItem>) {
+  loop {
+    println!("{:?}", "Await pub item");
+    let option = rec.next().await;
+    println!("Inc pub item");
+    if let Some(item) = option {
+      match item {
+        PublisherChannelItem::Request(r) => publisher.request(r),
+        PublisherChannelItem::Cancel => {
+          publisher.unsubscribe();
+          break;
+        }
+      }
+    } else {
+      break;
+    }
+  }
+
 }
 
 async fn await_cancel(mut unsub: Receiver<()>) -> bool {

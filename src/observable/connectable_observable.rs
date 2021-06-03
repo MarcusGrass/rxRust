@@ -25,24 +25,22 @@ pub type LocalConnectableObservable<'a, S, Item, Err> =
 pub type SharedConnectableObservable<S, Item, Err> =
   ConnectableObservable<S, SharedSubject<Item, Err>>;
 
-impl<'a, S, Item, Err> LocalObservable<'a>
+impl<'a, S, Item: Send + 'static, Err: Send + 'static> LocalObservable<'a>
   for LocalConnectableObservable<'a, S, Item, Err>
 where
   S: LocalObservable<'a, Item = Item, Err = Err>,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Send + 'static>(self, subscriber: Sub) {
-    self.subject.actual_subscribe(subscriber);
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
+    self.subject.actual_subscribe(channel);
   }
 }
 
-impl<S, Item, Err> SharedObservable for SharedConnectableObservable<S, Item, Err>
+impl<S, Item: Send + 'static, Err: Send + 'static> SharedObservable for SharedConnectableObservable<S, Item, Err>
 where
   S: SharedObservable<Item = Item, Err = Err>,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
-    self.subject.actual_subscribe(subscriber);
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
+    self.subject.actual_subscribe(channel);
   }
 }
 

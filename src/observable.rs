@@ -82,8 +82,8 @@ use crate::subscriber::Subscriber;
 type ALLOp<O, F> = DefaultIfEmptyOp<TakeOp<FilterOp<MapOp<O, F>, fn(&bool) -> bool>>>;
 
 pub trait Observable: Sized {
-  type Item;
-  type Err;
+  type Item: Send + 'static;
+  type Err: Send + 'static;
 
   /// emit only the first item emitted by an Observable
   #[inline]
@@ -723,7 +723,7 @@ pub trait Observable: Sized {
   /// // 105
   /// ```
   #[inline]
-  fn reduce_initial<OutputItem, BinaryOp>(
+  fn reduce_initial<OutputItem: Send + 'static, BinaryOp>(
     self,
     initial: OutputItem,
     binary_op: BinaryOp,
@@ -746,7 +746,7 @@ pub trait Observable: Sized {
   ///
   /// * `binary_op` - A closure acting as a binary operator.
   #[inline]
-  fn reduce<OutputItem, BinaryOp>(
+  fn reduce<OutputItem: Send + 'static, BinaryOp>(
     self,
     binary_op: BinaryOp,
   ) -> DefaultIfEmptyOp<LastOp<ScanOp<Self, BinaryOp, OutputItem>, OutputItem>>
@@ -1148,9 +1148,9 @@ pub trait Observable: Sized {
 }
 
 pub trait LocalObservable<'a>: Observable {
-  fn actual_subscribe<Sub: Subscriber<Item = Self::Item, Err = Self::Err> + Send + 'static> (
+  fn actual_subscribe(
     self,
-    subscriber: Sub,
+    channel: PublisherChannel<Self::Item, Self::Err>,
   );
 }
 

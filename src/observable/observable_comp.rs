@@ -1,27 +1,26 @@
 use crate::prelude::*;
 use std::sync::{Mutex, Arc};
 
-pub struct ObserverComp<N, C, Item> {
+pub struct ObserverComp<N, C, Item: Send + 'static> {
   next: N,
   complete: C,
   is_stopped: bool,
-  upstream: Upstream<Item, ()>,
   marker: TypeHint<*const Item>,
 }
 
-impl<N, C, Item> Subscriber for ObserverComp<N, C, Item>
+impl<N, C, Item: Send + 'static> Subscriber for ObserverComp<N, C, Item>
   where
       C: FnMut(),
       N: FnMut(Item),
 {
   fn connect(&mut self, mut chn: SubscriptionChannel<Self::Item, Self::Err>) {
-    chn.request(usize::MAX);
-    self.upstream = Upstream::INIT(chn);
+    //chn.request(usize::MAX);
+    //self.upstream = Upstream::INIT(chn);
     //*self.upstream.lock().unwrap() = sub;
     //self.upstream.lock().unwrap().request(usize::MAX);
   }
 }
-impl<N, C, Item> SubscriptionLike for ObserverComp<N, C, Item>
+impl<N, C, Item: Send + 'static> SubscriptionLike for ObserverComp<N, C, Item>
   where
       C: FnMut(),
       N: FnMut(Item),
@@ -37,7 +36,7 @@ impl<N, C, Item> SubscriptionLike for ObserverComp<N, C, Item>
     todo!()
   }
 }
-impl<N, C, Item> Observer for ObserverComp<N, C, Item>
+impl<N, C, Item: Send + 'static> Observer for ObserverComp<N, C, Item>
 where
   C: FnMut(),
   N: FnMut(Item),
@@ -54,7 +53,6 @@ where
     println!("{:?}", "Call complete");
     (self.complete)();
     self.is_stopped = true;
-    self.upstream.unsubscribe();
   }
 }
 
@@ -80,15 +78,16 @@ where
     Self: Sized,
     S::Item: 'a,
   {
-      println!("{:?}", "req");
-    self.actual_subscribe(ObserverComp {
+    let obs = ObserverComp {
       next,
       complete,
       is_stopped: false,
-      upstream: Upstream::UNINIT,
       marker: TypeHint::new(),
-    });
-    println!("{:?}", "req");
+    };
+    let (p, mut s) = pub_sub_channels();
+    self.actual_subscribe(p);
+    observe(obs, s.item_chn);
+    s.request_chn.request(usize::MAX);
     SubscriptionWrapper(LocalSubscription::default())
   }
 }
@@ -147,7 +146,8 @@ async fn complete() {
   let obs = observable::from_iter(vec![1, 2, 3]);
   let cmpl_c = cmpl.clone();
   let hits_c = hits.clone();
-  obs.subscribe_complete(move |n| *hits_c.lock().unwrap() += 1, move || *cmpl_c.lock().unwrap() = true);
+  obs.take(3)
+      .subscribe_complete(move |n| *hits_c.lock().unwrap() += 1, move || *cmpl_c.lock().unwrap() = true);
   while !*cmpl.lock().unwrap() {
 
   }

@@ -12,7 +12,7 @@ pub struct SkipLastOp<S> {
 #[doc(hidden)]
 macro_rules! observable_impl {
   ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -35,11 +35,11 @@ macro_rules! observable_impl {
 
 observable_proxy_impl!(SkipLastOp, S);
 
-impl<'a, Item: 'a, S> LocalObservable<'a> for SkipLastOp<S>
+impl<'a, Item: Send + 'static, S> LocalObservable<'a> for SkipLastOp<S>
 where
   S: LocalObservable<'a, Item = Item>,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -49,9 +49,7 @@ where
   S: SharedObservable,
   S::Item: Send + Sync + 'static,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -62,7 +60,7 @@ pub struct SkipLastObserver<O, Item> {
   queue: VecDeque<Item>,
 }
 
-impl<Item, Err, O> Observer for SkipLastObserver<O, Item>
+impl<Item: Send + 'static, Err: Send + 'static, O> Observer for SkipLastObserver<O, Item>
 where
   O: Observer<Item = Item, Err = Err>,
 {

@@ -8,7 +8,7 @@ pub struct LastOp<S, Item> {
   pub(crate) last: Option<Item>,
 }
 
-impl<Item, S> Observable for LastOp<S, Item>
+impl<Item: Send + 'static, S> Observable for LastOp<S, Item>
 where
   S: Observable<Item = Item>,
 {
@@ -19,7 +19,7 @@ where
 #[doc(hidden)]
 macro_rules! observable_impl {
   ($subscription:ty, $($marker:ident +)* $lf: lifetime) => {
-  fn actual_subscribe<O>(
+  fn actual_subscribe(
     self,
     subscriber: O,
   )
@@ -39,12 +39,12 @@ macro_rules! observable_impl {
 }
 }
 
-impl<'a, Item, S> LocalObservable<'a> for LastOp<S, Item>
+impl<'a, Item: Send + 'static, S> LocalObservable<'a> for LastOp<S, Item>
 where
   S: LocalObservable<'a, Item = Item>,
   Item: 'a + Clone,
 {
-  fn actual_subscribe<Sub: Subscriber<Item=Self::Item, Err=Self::Err> + 'a>(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -54,9 +54,7 @@ where
   S: SharedObservable<Item = Item>,
   Item: Send + Sync + 'static + Clone,
 {
-  fn actual_subscribe<
-    Sub: Subscriber<Item=Self::Item, Err=Self::Err> + Sync + Send + 'static
-  >(self, subscriber: Sub) {
+  fn actual_subscribe(self, channel: PublisherChannel<Self::Item, Self::Err>) {
     todo!()
   }
 }
@@ -66,7 +64,7 @@ pub struct LastObserver<S, T> {
   last: Option<T>,
 }
 
-impl<O, Item, Err> Observer for LastObserver<O, Item>
+impl<O, Item: Send + 'static, Err: Send + 'static> Observer for LastObserver<O, Item>
 where
   O: Observer<Item = Item, Err = Err>,
   Item: Clone,
